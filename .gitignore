@@ -1,2 +1,2 @@
 video/*
-*.pyc
+*/__pycache__/*.pyc
