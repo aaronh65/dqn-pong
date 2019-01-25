@@ -33,17 +33,14 @@ def main(env):
 	# This is a just rough estimate
 	num_iterations = float(40000000) / 4.0
 
-
 	# define exploration schedule
 	exploration_schedule = LinearSchedule(1000000, 0.1)
 
-
 	# optimizer
 	OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs"])
-
-		optimizer = OptimizerSpec(
-		constructor=optim.RMSprop,
-		kwargs=dict(lr=LEARNING_RATE, alpha=ALPHA, eps=EPS),
+	optimizer = OptimizerSpec(
+			constructor=optim.RMSprop,
+			kwargs=dict(lr=LEARNING_RATE, alpha=ALPHA, eps=EPS),
 		)
 
 
@@ -64,7 +61,7 @@ def main(env):
 
 if __name__ == '__main__':
 
-	env = gym.make("PongNoFrameskip-v4")
+	env = gym.make("PongNoFrameskip-v0")
 
 	# set global seeds
 	env.seed(SEED)
