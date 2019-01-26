@@ -14,8 +14,6 @@ import torch.nn.functional as F
 
 from .replay_buffer import ReplayBuffer
 
-from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
-
 # detect GPU
 USE_CUDA = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
@@ -43,7 +41,6 @@ def learning(
 	assert type(env.observation_space) == gym.spaces.Box
 	assert type(env.action_space)      == gym.spaces.Discrete
 
-
 	# 檢查是否是low-dimensional observations (e.g. RAM)
 	if len(env.observation_space.shape) == 1:
 		input_arg = env.observation_space.shape[0]
@@ -51,10 +48,8 @@ def learning(
 		img_h, img_w, img_c = env.observation_space.shape
 		input_arg = frame_history_len * img_c  # 實作論文中的每4 frame擷取一次
 
-
-	# 256
+	# 6
 	num_actions = env.action_space.n
-
 
 	# Construct an epilson greedy policy with given exploration schedule
 	def select_epilson_greedy_action(model, obs, t):
@@ -65,7 +60,6 @@ def learning(
 			return model(Variable(obs, volatile=True)).data.max(1)[1].view(1,1)
 		else:
 			return torch.IntTensor([[random.randrange(num_actions)]])
-
 
 	# Initialize target q function and q function
 	Q = q_func(input_arg, num_actions).type(dtype)
@@ -80,13 +74,11 @@ def learning(
 		print('Load target Q parameters ...')
 		target_Q.load_state_dict(torch.load('target_Q_params.pkl'))
 
-
 	# Construct Q network optimizer function
 	optimizer = optimizer_spec.constructor(Q.parameters(), **optimizer_spec.kwargs)
 
 	# Construct the replay buffer
 	replay_buffer = ReplayBuffer(replay_buffer_size, frame_history_len)
-
 
 	### RUN ENV
 	num_param_updates = 0
@@ -95,13 +87,11 @@ def learning(
 	last_obs = env.reset()
 	LOG_EVERY_N_STEPS = 10000
 
-
 	for t in count():
 		### Step the env and store the transition
 		last_idx = replay_buffer.store_frame(last_obs)
 		# 將最新的observation與最近的幾個frame concat在一起，才能丟進Q網路
 		recent_observations = replay_buffer.encode_recent_observation()
-
 
 		# buffer 收集到一定的量才開始學習
 		if t > learning_starts:
