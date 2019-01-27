@@ -61,7 +61,7 @@ def main(env):
 
 if __name__ == '__main__':
 
-	env = gym.make("PongNoFrameskip-v0")
+	env = gym.make("PongNoFrameskip-v4")
 
 	# set global seeds
 	env.seed(SEED)

@@ -41,14 +41,10 @@ def learning(
 	assert type(env.observation_space) == gym.spaces.Box
 	assert type(env.action_space)      == gym.spaces.Discrete
 
-	# 檢查是否是low-dimensional observations (e.g. RAM)
-	if len(env.observation_space.shape) == 1:
-		input_arg = env.observation_space.shape[0]
-	else:
-		img_h, img_w, img_c = env.observation_space.shape
-		input_arg = frame_history_len * img_c  # 實作論文中的每4 frame擷取一次
+	# Observation Space Size = (84, 84, 1)
+	input_arg = env.observation_space.shape[0] * env.observation_space.shape[1] * env.observation_space.shape[2] * frame_history_len
 
-	# 6
+	# Action Space Size
 	num_actions = env.action_space.n
 
 	# Construct an epilson greedy policy with given exploration schedule
@@ -129,14 +125,7 @@ def learning(
 			next_Q_values = not_done_mask * next_max_q
 			# TD value
 			target_Q_values = rew_batch + (gamma * next_Q_values)
-			# Compute Bellman error
-			# bellman_error = target_Q_values - current_Q_values
-			# clip the bellman error between [-1, 1]
-			# clipped_bellman_error = bellman_error.clamp(-1, 1)
-			# 要 * -1 才是正確的gradient，why?
-			# d_error = clipped_bellman_error * -1.0
 
-			# print(d_error)
 			loss = F.smooth_l1_loss(current_Q_values, target_Q_values)
 			# backward & update
 			optimizer.zero_grad()
