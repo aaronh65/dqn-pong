@@ -1,163 +1,176 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
 import random
 import numpy as np
 from itertools import count
-
 import gym
+
+import math, time
 
 import torch
 import torch.nn as nn
-import torch.autograd as autograd
+import torch.optim as optim
 import torch.nn.functional as F
+import torchvision.transforms as T
 
-from .replay_buffer import ReplayBuffer
+from common.atari_wrapper import *
+from deepq.model import *
+from deepq.replay_buffer import ReplayMemory
+from collections import namedtuple
 
-# detect GPU
-USE_CUDA = torch.cuda.is_available()
-dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+# hyperparameters
+lr = 1e-4
+INITIAL_MEMORY = 10000
+BATCH_SIZE = 32
+GAMMA = 0.99
+EPS_START = 1
+EPS_END = 0.02
+EPS_DECAY = 1000000
+TARGET_UPDATE = 1000
+RENDER = False
+MEMORY_SIZE = 10 * INITIAL_MEMORY
 
-class Variable(autograd.Variable):
-	def __init__(self, data, *args, **kwargs):
-		if USE_CUDA:
-			data = data.cuda()
-		super(Variable, self).__init__(data, *args, **kwargs)
+Transition = namedtuple('Transion',
+			('state', 'action', 'next_state', 'reward'))
 
-def learning(
-	env,
-	q_func,
-	optimizer_spec,
-	exploration,
-	replay_buffer_size=1000000,
-	batch_size=32,
-	gamma=0.99,
-	learning_starts=50000,
-	learning_freq=4,
-	frame_history_len=4,
-	target_update_freq=10000
-	):
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-	assert type(env.observation_space) == gym.spaces.Box
-	assert type(env.action_space)      == gym.spaces.Discrete
+# initialize replay memory
+memory = ReplayMemory(MEMORY_SIZE)
 
-	# Observation Space Size = (84, 84, 1)
-	input_arg = frame_history_len
+# create networks
+policy_net = DQN(n_actions=4).to(device)
+target_net = DQN(n_actions=4).to(device)
+target_net.load_state_dict(policy_net.state_dict())
 
-	# Action Space Size
-	num_actions = env.action_space.n
+# setup optimizer
+optimizer = optim.Adam(policy_net.parameters(), lr=lr)
 
-	# Construct an epilson greedy policy with given exploration schedule
-	def select_epilson_greedy_action(model, obs, t):
-		sample = random.random()
-		eps_threshold = exploration.value(t)
-		if sample > eps_threshold:
-			obs = torch.from_numpy(obs).type(dtype).unsqueeze(0) / 255.0
-			return model(Variable(obs, volatile=True)).data.max(1)[1].view(1,1)
-		else:
-			return torch.IntTensor([[random.randrange(num_actions)]])
+def select_action(state, steps_done, device):
+	sample = random.random()
+	eps_threshold = EPS_END + (EPS_START - EPS_END)* \
+		math.exp(-1. * steps_done / EPS_DECAY)
+	steps_done += 1
+	if sample > eps_threshold:
+		with torch.no_grad():
+			return policy_net(state.to(device)).max(1)[1].view(1,1), steps_done
+	else:
+		return torch.tensor([[random.randrange(4)]], device=device, dtype=torch.long), steps_done
 
-	# Initialize target q function and q function
-	Q = q_func(input_arg, num_actions).type(dtype)
-	target_Q = q_func(input_arg, num_actions).type(dtype)
+def optimize_model(device):
+	if len(memory) < BATCH_SIZE:
+		return
+	transitions = memory.sample(BATCH_SIZE)
+	"""
+	zip(*transitions) unzips the transitions into
+	Transition(*) creates new named tuple
+	batch.state - tuple of all the states (each state is a tensor)
+	batch.next_state - tuple of all the next states (each state is a tensor)
+	batch.reward - tuple of all the rewards (each reward is a float)
+	batch.action - tuple of all the actions (each action is an int)
+	"""
+	batch = Transition(*zip(*transitions))
 
-	# Check & load pretrain model
-	if os.path.isfile('Q_params.pkl'):
-		print('Load Q parametets ...')
-		Q.load_state_dict(torch.load('Q_params.pkl'))
+	actions = tuple((map(lambda a: torch.tensor([[a]], device=device), batch.action)))
+	rewards = tuple((map(lambda r: torch.tensor([r], device=device), batch.reward)))
 
-	if os.path.isfile('target_Q_params.pkl'):
-		print('Load target Q parameters ...')
-		target_Q.load_state_dict(torch.load('target_Q_params.pkl'))
+	non_final_mask = torch.tensor(
+		tuple(map(lambda s: s is not None, batch.next_state)),
+		device=device, dtype=torch.uint8)
 
-	# Construct Q network optimizer function
-	optimizer = optimizer_spec.constructor(Q.parameters(), **optimizer_spec.kwargs)
+	non_final_next_states = torch.cat([s for s in batch.next_state
+					if s is not None]).to(device)
 
-	# Construct the replay buffer
-	replay_buffer = ReplayBuffer(replay_buffer_size, frame_history_len)
+	state_batch = torch.cat(batch.state).to(device)
+	action_batch = torch.cat(actions)
+	reward_batch = torch.cat(rewards)
 
-	### RUN ENV
-	num_param_updates = 0
-	mean_episode_reward = -float('nan')
-	best_mean_episode_reward = -float('inf')
-	last_obs = env.reset()
-	LOG_EVERY_N_STEPS = 10000
+	state_action_values = policy_net(state_batch).gather(1, action_batch)
 
-	for t in count():
-		### Step the env and store the transition
-		last_idx = replay_buffer.store_frame(last_obs)
-		# 將最新的observation與最近的幾個frame concat在一起，才能丟進Q網路
-		recent_observations = replay_buffer.encode_recent_observation()
+	next_state_values = torch.zeros(BATCH_SIZE, device=device)
+	next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
+	expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
-		# buffer 收集到一定的量才開始學習
-		if t > learning_starts:
-			action = select_epilson_greedy_action(Q, recent_observations, t)[0, 0]
-		else:
-			action = random.randrange(num_actions)
+	loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
 
-		obs, reward, done, _ = env.step(action)
-		env.render()
-		reward = max(-1.0, min(reward, 1.0))
-		replay_buffer.store_effect(last_idx, action, reward, done) # 將新的資訊存入buffer中
+	optimizer.zero_grad()
+	loss.backward()
+	for param in policy_net.parameters():
+		param.grad.data.clamp_(-1, 1)
+	optimizer.step()
 
-		if done:
-			obs = env.reset()
-		last_obs = obs
+def get_state(obs):
+	state = np.array(obs)
+	state = state.transpose((2, 0, 1))
+	state = torch.from_numpy(state)
+	return state.unsqueeze(0)
 
-		### 從buffer中抽樣並以target network的方式訓練
-		if (t > learning_starts and t % learning_freq == 0 and replay_buffer.can_sample(batch_size)):
-			obs_batch, act_batch, rew_batch, next_obs_batch, done_mask = replay_buffer.sample(batch_size)
+def train(env, n_episodes, steps_done, device, render=False):
+	for episode in range(n_episodes):
+		obs = env.reset()
+		state = get_state(obs)
+		total_reward = 0.0
+		for t in count():
+			action, steps_done = select_action(state, steps_done, device)
 
-			obs_batch = Variable(torch.from_numpy(obs_batch).type(dtype) / 255.0)
-			act_batch = Variable(torch.from_numpy(act_batch).long())
-			rew_batch = Variable(torch.from_numpy(rew_batch))
-			next_obs_batch = Variable(torch.from_numpy(next_obs_batch).type(dtype) / 255.0)
-			not_done_mask = Variable(torch.from_numpy(1 - done_mask)).type(dtype) # 如果下一個state是episode中的最後一個，則done_mask = 1
+			if render:
+				env.render()
 
-			if USE_CUDA:
-				act_batch = act_batch.cuda()
-				rew_batch = rew_batch.cuda()
+			obs, reward, done, info = env.step(action)
 
-			# 從抽出的batch observation中得出現在的Q值
-			current_Q_values = Q(obs_batch).gather(1, act_batch.unsqueeze(1))
-			# 用next_obs_batch計算下一個Q值，detach代表將target network從graph中分離，不去計算它的gradient
-			next_max_q = target_Q(next_obs_batch).detach().max(1)[0]
-			next_Q_values = not_done_mask * next_max_q
-			# TD value
-			target_Q_values = rew_batch + (gamma * next_Q_values)
+			total_reward += reward
 
-			loss = F.smooth_l1_loss(current_Q_values, target_Q_values)
-			# backward & update
-			optimizer.zero_grad()
-			# current_Q_values.backward(d_error.data)#.unsqueeze(1))
-			loss.backward()
-			# Clip the gradients to lie between -1 and +1
-			for params in Q.parameters():
-				params.grad.data.clamp_(-1, 1)
+			if not done:
+				next_state = get_state(obs)
+			else:
+				next_state = None
 
-			optimizer.step()
-			num_param_updates += 1
+			reward = torch.tensor([reward], device=device)
 
-			# 每隔一段時間才更新target network
-			if num_param_updates % target_update_freq == 0:
-				target_Q.load_state_dict(Q.state_dict())
+			memory.push(state, action.to(device), next_state, reward.to(device))
+			state = next_state
 
-		### Log & track
-		# 要用gym.wrappers中的Monitor將env包起來，才有get_episode_rewards屬性，返回值為list
-		episode_rewards = env.get_episode_rewards()
-		if len(episode_rewards) > 0:
-			mean_episode_reward = np.mean(episode_rewards[-100:]) # 最近100次reward的平均
-		if len(episode_rewards) > 100:
-			best_mean_episode_reward = max(best_mean_episode_reward, mean_episode_reward)
+			if steps_done > INITIAL_MEMORY:
+				optimize_model(device)
 
-		if t % LOG_EVERY_N_STEPS == 0 and t > learning_starts:
-			print("Timestep %d" % (t,))
-			print("mean reward (100 episodes) %f" % mean_episode_reward)
-			print("best mean reward %f" % best_mean_episode_reward)
-			print("episodes %d" % len(episode_rewards))
-			print("exploration %f" % exploration.value(t))
-			sys.stdout.flush()
+				if steps_done % TARGET_UPDATE == 0:
+					target_net.load_state_dict(policy_net.state_dict())
 
-			# Save the trained model
-			torch.save(Q.state_dict(), 'Q_params.pkl')
-			torch.save(target_Q.state_dict(), 'target_Q_params.pkl')
+			if done:
+				break
+		if episode % 20 == 0:
+			print('Total steps: {} \t Episode: {}/{} \t Total reward: {}'.format(steps_done, episode, t, total_reward))
+	env.close()
+	torch.save(policy_net, "dqn_pong_model")
+	return
+
+def test(env, n_episodes, policy, device, render=True):
+	env = gym.wrappers.Monitor(env, './videos/' + 'dqn_pong_video')
+	policy_net = torch.load("dqn_pong_model")
+	for episode in range(n_episodes):
+		obs = env.reset()
+		state = get_state(obs)
+		total_reward = 0.0
+		for t in count():
+			action = policy(state.to(device)).max(1)[1].view(1,1)
+
+			if render:
+				env.render()
+				time.sleep(0.02)
+
+			obs, reward, done, info = env.step(action)
+
+			total_reward += reward
+
+			if not done:
+				next_state = get_state(obs)
+			else:
+				next_state = None
+
+			state = next_state
+
+			if done:
+				print("Finished Episode {} with reward {}".format(episode, total_reward))
+				break
+
+		env.close()
+	return
