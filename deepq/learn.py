@@ -37,15 +37,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # initialize replay memory
 memory = ReplayMemory(MEMORY_SIZE)
 
-# create networks
-policy_net = DQN(n_actions=4).to(device)
-target_net = DQN(n_actions=4).to(device)
-target_net.load_state_dict(policy_net.state_dict())
-
-# setup optimizer
-optimizer = optim.Adam(policy_net.parameters(), lr=lr)
-
-def select_action(state, steps_done, device):
+def select_action(policy_net, state, steps_done, device):
 	sample = random.random()
 	eps_threshold = EPS_END + (EPS_START - EPS_END)* \
 		math.exp(-1. * steps_done / EPS_DECAY)
@@ -56,7 +48,7 @@ def select_action(state, steps_done, device):
 	else:
 		return torch.tensor([[random.randrange(4)]], device=device, dtype=torch.long), steps_done
 
-def optimize_model(device):
+def optimize_model(optimizer, policy_net, target_net, device):
 	if len(memory) < BATCH_SIZE:
 		return
 	transitions = memory.sample(BATCH_SIZE)
@@ -105,12 +97,21 @@ def get_state(obs):
 	return state.unsqueeze(0)
 
 def train(env, n_episodes, steps_done, device, render=False):
+	# create networks
+	# policy_net = DQN(n_actions=4).to(device)
+	policy_net = torch.load("dqn_pong_model")
+	target_net = DQN(n_actions=4).to(device)
+	target_net.load_state_dict(policy_net.state_dict())
+
+	# setup optimizer
+	optimizer = optim.Adam(policy_net.parameters(), lr=lr)
+
 	for episode in range(n_episodes):
 		obs = env.reset()
 		state = get_state(obs)
 		total_reward = 0.0
 		for t in count():
-			action, steps_done = select_action(state, steps_done, device)
+			action, steps_done = select_action(policy_net, state, steps_done, device)
 
 			if render:
 				env.render()
@@ -130,7 +131,7 @@ def train(env, n_episodes, steps_done, device, render=False):
 			state = next_state
 
 			if steps_done > INITIAL_MEMORY:
-				optimize_model(device)
+				optimize_model(optimizer, policy_net, target_net, device)
 
 				if steps_done % TARGET_UPDATE == 0:
 					target_net.load_state_dict(policy_net.state_dict())
@@ -140,7 +141,7 @@ def train(env, n_episodes, steps_done, device, render=False):
 		if episode % 20 == 0:
 			print('Total steps: {} \t Episode: {}/{} \t Total reward: {}'.format(steps_done, episode, t, total_reward))
 	env.close()
-	torch.save(policy_net, "dqn_pong_model")
+	torch.save(policy_net, "dqn_pong_model_2")
 	return
 
 def test(env, n_episodes, policy, device, render=True):
