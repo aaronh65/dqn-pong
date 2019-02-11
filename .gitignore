@@ -1,2 +1,3 @@
 video/*
 */__pycache__/*.pyc
+dqn_pong_model
