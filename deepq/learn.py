@@ -144,9 +144,9 @@ def train(env, n_episodes, steps_done, device, render=False):
 	torch.save(policy_net, "dqn_pong_model_2")
 	return
 
-def test(env, n_episodes, policy, device, render=True):
+def test(env, n_episodes, device, render=True):
 	env = gym.wrappers.Monitor(env, './videos/' + 'dqn_pong_video')
-	policy_net = torch.load("dqn_pong_model")
+	policy = torch.load("dqn_pong_model")
 	for episode in range(n_episodes):
 		obs = env.reset()
 		state = get_state(obs)

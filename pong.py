@@ -22,4 +22,4 @@ if __name__ == '__main__':
 	train(env, 400, steps_done, device)
 
 	# test model
-	test(env, 1, policy_net, device, render=False)
+	test(env, 1, device, render=True)
