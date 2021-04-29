@@ -15,7 +15,7 @@ NUM_EPISODES = 400
 #NUM_EPISODES = 100000
 
 TIME = datetime.now().strftime("%Y%m%d_%H%M%S")
-USE_WANDB = False
+USE_WANDB = True
 
 if __name__ == '__main__':
 
@@ -30,10 +30,10 @@ if __name__ == '__main__':
     steps_done = 0
 
     # train model
-    train(env, ENV_NAME, NUM_EPISODES, steps_done, device, render=True)
+    train(env, ENV_NAME, NUM_EPISODES, steps_done, device, render=RENDER)
 
     # test model
-    test(env, ENV_NAME, 100, policy_net, device, render=True)
+    test(env, ENV_NAME, 100, policy_net, device, render=RENDER)
 
 
 
