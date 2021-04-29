@@ -30,7 +30,7 @@ GAMMA = 0.99
 EPS_START = 1
 EPS_END = 0.02
 EPS_DECAY = 1000000
-VAL_RATE = 1000
+VAL_RATE = 10
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10 * INITIAL_MEMORY
 
@@ -213,20 +213,20 @@ def train(env, env_name, n_episodes, steps_done, device, render=False):
 
                 if steps_done % TARGET_UPDATE == 0:
                     target_net.load_state_dict(policy_net.state_dict())
-
-            if steps_done > INITIAL_MEMORY and steps_done % VAL_RATE == 0:
-
-                val_reward = test(env, env_name, 10, policy_net, device, render=True)
-                if val_reward > best_val_reward:
-                    torch.save(policy_net, f"checkpoints/{env_name}/{TIME}.pt")
-                    best_val_reward = val_reward
-                metrics['val_reward'] = val_reward
-
+                
             if done:
                 metrics['train_reward'] = total_reward 
-                if episode % 20 == 0:
-                    tqdm.write('Total steps: {} \t Episode: {}/{} \t Total reward: {}'.format(
-                        steps_done, episode, n_episodes, total_reward))
+                #tqdm.write('Total steps: {} \t Episode: {}/{} \t Train reward: {}'.format(
+                #    steps_done, episode, n_episodes, total_reward))
+
+                if steps_done > INITIAL_MEMORY and episode % VAL_RATE == 0:
+                    val_reward = test(env, env_name, 10, policy_net, device, render=render)
+                    tqdm.write('Total steps: {} \t Episode: {}/{} \t Eval reward: {}'.format(
+                        steps_done, episode, n_episodes, val_reward))
+                    if val_reward > best_val_reward:
+                        torch.save(policy_net, f"checkpoints/{env_name}/{TIME}.pt")
+                        best_val_reward = val_reward
+                    metrics['val_reward'] = val_reward
 
                 if USE_WANDB: # log before we go to next episode
                     wandb.log(metrics)
