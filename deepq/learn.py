@@ -130,15 +130,16 @@ def get_state(obs):
     state = torch.from_numpy(state)
     return state.unsqueeze(0)
 
-def test(env, env_name, n_episodes, policy, device, render=True):
+def test(env, env_name, n_episodes, policy, device, render=True, restore=False):
     #env = gym.wrappers.Monitor(env, './videos/' + 'dqn_breakout_video')
     env = gym.make(env_name)
     env = make_env(env)
-    path = Path(f"checkpoints/{env_name}")
-    ckpts = list(sorted(path.glob("*")))
-    if len(ckpts) > 0:
-        ckpt = ckpts[-1]
-        policy = torch.load(str(ckpt))
+    if restore:
+        path = Path(f"checkpoints/{env_name}")
+        ckpts = list(sorted(path.glob("*")))
+        if len(ckpts) > 0:
+            ckpt = ckpts[-1]
+            policy = torch.load(str(ckpt))
     mean_total_reward = 0
     for episode in range(n_episodes):
         obs = env.reset()
