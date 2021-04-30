@@ -30,8 +30,8 @@ def get_hsv_colors(env_name='PongNoFrameskip-v4'):
                 'trees': trees_rgb,
                 }
     elif env_name == 'PongNoFrameskip-v4':
-        us_rgb = np.uint8([[[38, 190, 78]]])
-        them_rgb = np.uint8([[[225, 126, 59]]])
+        us_rgb = np.uint8([[[92, 186, 92]]])
+        them_rgb = np.uint8([[[213, 130, 74]]])
         ball = np.uint8([[[236,236,236]]])
         classes_rgb = {
             'us': us_rgb,

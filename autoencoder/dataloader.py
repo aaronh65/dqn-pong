@@ -8,6 +8,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from atari_masks import get_hsv_colors, get_mask
 
+from matplotlib import pyplot as plt
+
 SHOW = False
 
 class SkierDataset(Dataset):
@@ -50,9 +52,12 @@ class SkierDataset(Dataset):
         res['rgb']  = rgb_tensor
 
         if SHOW:
-            cv2.imshow('rgb', rgb)
-            cv2.imwrite('masks.png', masks)
-            cv2.waitKey(10)
+            plt.figure(1)
+            plt.imshow(masks)
+            plt.show()
+            # cv2.imwrite('rgb.png', rgb)
+            # cv2.imwrite('masks.png', masks)
+            # cv2.waitKey(0)
 
         return res
 

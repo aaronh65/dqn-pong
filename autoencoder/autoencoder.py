@@ -178,8 +178,8 @@ def main(hparams):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_dir', type=str, default='data/20210430_193015')
-    parser.add_argument('--gpus', type=int, default=-1)
+    parser.add_argument('--dataset_dir', type=str, default='data/20210430_152756')
+    parser.add_argument('--gpus', type=int, default=0)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--max_epochs', type=int, default=2)
