@@ -11,12 +11,12 @@ from atari_masks import get_hsv_colors, get_mask
 SHOW = False
 
 class SkierDataset(Dataset):
-    def __init__(self, episodes):
+    def __init__(self, episodes, env):
         self.frames = list()
         for ep_path in episodes:
             rgb_path = ep_path / 'rgb'
             self.frames.extend(sorted(list(rgb_path.glob('*'))))
-        self.classes_hsv = get_hsv_colors() # object to hsv color dict
+        self.classes_hsv = get_hsv_colors(env) # object to hsv color dict
 
         self.transform = transforms.Compose([
             transforms.Resize((256, 160)),
@@ -43,7 +43,7 @@ class SkierDataset(Dataset):
             mask_image = Image.fromarray(mask)
             mask_tensor = self.transform(mask_image)
             res[cls] = mask_tensor
-            masks.append(np.uint8(mask) * 255)
+            masks.append(mask)
         masks = np.hstack(masks)
 
         rgb_tensor = self.transform(Image.fromarray(rgb))
@@ -51,7 +51,7 @@ class SkierDataset(Dataset):
 
         if SHOW:
             cv2.imshow('rgb', rgb)
-            cv2.imshow('masks', masks)
+            cv2.imwrite('masks.png', masks)
             cv2.waitKey(10)
 
         return res
@@ -68,7 +68,7 @@ def get_dataloader(args, is_train=False):
         elif not is_train and i % 10 == 0:
             episodes.append(path)
 
-    dataset = SkierDataset(episodes)
+    dataset = SkierDataset(episodes, args.env)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
     return dataloader
     

@@ -41,7 +41,7 @@ if __name__ == '__main__':
     #parser.add_argument('--env', type=str, default='Skiing-v0')
     parser.add_argument('--env', type=str, default='PongNoFrameskip-v4')
     parser.add_argument('--show', action='store_true')
-    parser.add_argument('--num_episodes', type=int, default=1)
+    parser.add_argument('--num_episodes', type=int, default=10)
     args = parser.parse_args()
 
     save_root = Path(args.save_root) / datetime.now().strftime("%Y%m%d_%H%M%S") 

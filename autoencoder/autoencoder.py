@@ -6,7 +6,7 @@ from models import ResnetEncoder, ResnetDecoder
 from dataloader import get_dataloader
 from utils import spatial_norm
 
-# import wandb
+import wandb
 import cv2
 import torch
 import torch.nn as nn
@@ -14,14 +14,19 @@ import pytorch_lightning as pl
 import numpy as np
 import argparse
 
-DISPLAY=True
+DISPLAY=False
 
 class AutoEncoder(pl.LightningModule):
     def __init__(self, hparams):
         super().__init__()
         self.hparams = hparams
+        class_num = 0
+        if self.hparams.env == 'Skiing-v0':
+            class_num = 4
+        elif self.hparams.env == 'PongNoFrameskip-v4':
+            class_num = 3
         self.res_encoder = ResnetEncoder()
-        self.res_decoder = ResnetDecoder()
+        self.res_decoder = ResnetDecoder(class_num)
         self.criterion = nn.MSELoss(reduction='none')
 
     def forward(self, rgb, decode=True):
@@ -34,13 +39,18 @@ class AutoEncoder(pl.LightningModule):
 
     def training_step(self, batch, batch_nb):
         rgb = batch['rgb']
+        if self.hparams.env == 'Skiing-v0':
+            skier = batch['skier']
+            flags = batch['flags']
+            rocks = batch['rocks']
+            trees = batch['trees']
+            gt_masks = torch.cat((skier, flags, rocks, trees), dim=1)
+        elif self.hparams.env == 'PongNoFrameskip-v4':
+            us = batch['us']
+            them = batch['them']
+            ball = batch['ball']
+            gt_masks = torch.cat((us, them, ball), dim=1)
 
-        skier = batch['skier']
-        flags = batch['flags']
-        rocks = batch['rocks']
-        trees = batch['trees']
-
-        gt_masks = torch.cat((skier, flags, rocks, trees), dim=1)
         latent = self.res_encoder(rgb)
         pred_masks = self.res_decoder(latent)
 
@@ -60,13 +70,18 @@ class AutoEncoder(pl.LightningModule):
 
     def validation_step(self, batch, batch_nb):
         rgb = batch['rgb']
+        if self.hparams.env == 'Skiing-v0':
+            skier = batch['skier']
+            flags = batch['flags']
+            rocks = batch['rocks']
+            trees = batch['trees']
+            gt_masks = torch.cat((skier, flags, rocks, trees), dim=1)
+        elif self.hparams.env == 'PongNoFrameskip-v4':
+            us = batch['us']
+            them = batch['them']
+            ball = batch['ball']
+            gt_masks = torch.cat((us, them, ball), dim=1)
 
-        skier = batch['skier']
-        flags = batch['flags']
-        rocks = batch['rocks']
-        trees = batch['trees']
-
-        gt_masks = torch.cat((skier, flags, rocks, trees), dim=1)
         latent = self.res_encoder(rgb)
         pred_masks = self.res_decoder(latent)
 
@@ -149,7 +164,7 @@ def main(hparams):
     else:
         logger = False
 
-    checkpoint_callback = ModelCheckpoint(hparams.save_dir, save_top_k=3)
+    checkpoint_callback = ModelCheckpoint(hparams.save_dir, monitor='val_loss', save_top_k=3)
     model = AutoEncoder(hparams)
     trainer = pl.Trainer(
             max_epochs=hparams.max_epochs,
@@ -163,13 +178,15 @@ def main(hparams):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_dir', type=str, default='data/20210413_182405')
+    parser.add_argument('--dataset_dir', type=str, default='data/20210430_193015')
     parser.add_argument('--gpus', type=int, default=-1)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--max_epochs', type=int, default=2)
     parser.add_argument('--save_dir', type=str, default='checkpoints')
     parser.add_argument('--log', action='store_true')
+    parser.add_argument('--env', type=str, default='PongNoFrameskip-v4')
+
     args = parser.parse_args()
 
     save_dir = Path(args.save_dir) / 'autoencoder' / datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -30,8 +30,14 @@ def get_hsv_colors(env_name='PongNoFrameskip-v4'):
                 'trees': trees_rgb,
                 }
     elif env_name == 'PongNoFrameskip-v4':
-        # need to get pong hsv colors and class names
-        pass
+        us_rgb = np.uint8([[[38, 190, 78]]])
+        them_rgb = np.uint8([[[225, 126, 59]]])
+        ball = np.uint8([[[236,236,236]]])
+        classes_rgb = {
+            'us': us_rgb,
+            'them': them_rgb,
+            'ball': ball,
+        }
     elif env_name == 'Breakout-v0':
         # same for breakout if we want to do breakout at all
         pass
