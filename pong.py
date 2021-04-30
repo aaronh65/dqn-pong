@@ -9,10 +9,10 @@ from common.atari_wrapper import *
 from deepq.model import *
 from deepq.learn import *
 
-ENV_NAME = "PongNoFrameskip-v4"
-#ENV_NAME = "Breakout-v0"
-NUM_EPISODES = 400
-#NUM_EPISODES = 100000
+#ENV_NAME = "PongNoFrameskip-v4"
+ENV_NAME = "Breakout-v0"
+#NUM_EPISODES = 400
+NUM_EPISODES = 100000
 RENDER=False
 
 TIME = datetime.now().strftime("%Y%m%d_%H%M%S")
