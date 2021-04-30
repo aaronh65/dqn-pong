@@ -6,7 +6,7 @@ from PIL import Image
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from create_masked_images import get_hsv_colors, get_mask
+from atari_masks import get_hsv_colors, get_mask
 
 SHOW = False
 
@@ -27,9 +27,9 @@ class SkierDataset(Dataset):
         return len(self.frames)
 
     def __getitem__(self, i):
-        res = {}
-        frame = self.frames[i]
+        res = {} # a dictionary of tensors
 
+        frame = self.frames[i]
         rgb = np.array(Image.open(frame))
         
         h,w,c = rgb.shape

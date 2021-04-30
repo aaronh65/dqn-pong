@@ -15,19 +15,29 @@ def get_mask(rgb, hsv_color, debug=False):
     mask = cv2.inRange(hsv, low, high)
     return mask
 
-def get_hsv_colors():
+def get_hsv_colors(env_name='PongNoFrameskip-v4'):
 
     # retrieve HSV colors
-    skier_rgb = np.uint8([[[214, 92, 92]]])
-    flags_rgb = np.uint8([[[66, 72, 200]]])
-    rocks_rgb = np.uint8([[[214,214,214], [192,192,192]]])
-    trees_rgb = np.uint8([[[158,208,101], [72, 160, 72], [110, 156, 66], [82,126,45]]]) # light tree
-    classes_rgb = {
-            'skier': skier_rgb,
-            'flags': flags_rgb,
-            'rocks': rocks_rgb,
-            'trees': trees_rgb,
-            }
+    if env_name == 'Skiing-v0':
+        skier_rgb = np.uint8([[[214, 92, 92]]])
+        flags_rgb = np.uint8([[[66, 72, 200]]])
+        rocks_rgb = np.uint8([[[214,214,214], [192,192,192]]])
+        trees_rgb = np.uint8([[[158,208,101], [72, 160, 72], [110, 156, 66], [82,126,45]]]) # light tree
+        classes_rgb = {
+                'skier': skier_rgb,
+                'flags': flags_rgb,
+                'rocks': rocks_rgb,
+                'trees': trees_rgb,
+                }
+    elif env_name == 'PongNoFrameskip-v4':
+        # need to get pong hsv colors and class names
+        pass
+    elif env_name == 'Breakout-v0':
+        # same for breakout if we want to do breakout at all
+        pass
+    else:
+        print('unsupported environment')
+        raise Exception
 
     classes_hsv = {}
     for cls, rgbs in classes_rgb.items():
