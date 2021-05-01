@@ -8,7 +8,7 @@ import numpy as np
 import gym
 from PIL import Image
 
-def make_env(env, stack_frames=True, episodic_life=True, clip_rewards=False, scale=False, encoder=False):
+def make_env(env, stack_frames=True, episodic_life=True, clip_rewards=False, scale=False, enc=False):
 	if episodic_life:
 		env = EpisodicLifeEnv(env)
 
@@ -16,7 +16,7 @@ def make_env(env, stack_frames=True, episodic_life=True, clip_rewards=False, sca
 	env = MaxAndSkipEnv(env, skip=4)
 	if 'FIRE' in env.unwrapped.get_action_meanings():
 		env = FireResetEnv(env)
-	if not encoder:
+	if not enc:
 		env = WarpFrame(env)
 	else:
 		env = RGBFrame(env)

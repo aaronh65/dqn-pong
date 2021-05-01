@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # create environment
     env = gym.make(ENV_NAME)
-    env = make_env(env, encoder=ENCODER)
+    env = make_env(env, enc=ENCODER)
 
     steps_done = 0
 
