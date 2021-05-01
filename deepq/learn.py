@@ -74,7 +74,7 @@ target_net.load_state_dict(policy_net.state_dict())
 
 #TODO INIT ENCODER HERE
 a_encoder = AutoEncoder.load_from_checkpoint("/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=3.ckpt")
-encoder = a_encoder.res_encoder
+encoder = a_encoder.res_encoder.to(device)
 encoder.eval()
 
 decoder = a_encoder.res_decoder
@@ -159,7 +159,7 @@ def get_state(obs, enc=False, debug=False):
             frame = Image.fromarray(obs[:, :, i*3:i*3+3])
             # frame.save(f'frame{i}.png')
             frames.append(transform(frame))
-        frames = torch.stack(frames, 0)
+        frames = torch.stack(frames, 0).to(device)
         frames = encoder(frames)
         fram = [f for f in frames]
         fram = torch.cat(fram, 0)
