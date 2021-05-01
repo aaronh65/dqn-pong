@@ -27,14 +27,14 @@ import cv2
 from matplotlib import pyplot as plt
 # hyperparameters
 lr = 1e-4
-INITIAL_MEMORY = 10000
+INITIAL_MEMORY = 10
 #INITIAL_MEMORY = 2000
-BATCH_SIZE = 32
+BATCH_SIZE = 4
 GAMMA = 0.99
 EPS_START = 1
 EPS_END = 0.02
 EPS_DECAY = 100000
-VAL_RATE = 1000
+VAL_RATE = 1
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10 * INITIAL_MEMORY
 
@@ -68,12 +68,12 @@ memory = ReplayMemory(MEMORY_SIZE)
 # target_net = DQNBase(n_actions=4).to(device)
 # target_net.load_state_dict(policy_net.state_dict())
 
-policy_net = DQNEncodedFeatures(n_actions=4).to(device)
-target_net = DQNEncodedFeatures(n_actions=4).to(device)
+policy_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
+target_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
 #TODO INIT ENCODER HERE
-a_encoder = AutoEncoder.load_from_checkpoint("/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=4.ckpt")
+a_encoder = AutoEncoder.load_from_checkpoint("/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=3.ckpt")
 encoder = a_encoder.res_encoder
 encoder.eval()
 
@@ -142,7 +142,8 @@ def optimize_model(device):
     optimizer.step()
     return loss
 
-def get_state(obs, enc=False):
+@torch.no_grad()
+def get_state(obs, enc=False, debug=False):
     if not enc:
         state = np.array(obs)
         state = state.transpose((2, 0, 1))
@@ -152,17 +153,22 @@ def get_state(obs, enc=False):
         obs = np.array(obs)
         obs = np.uint8(obs)
         frames = []
+        if debug:
+            print(obs.shape)
         for i in range(4):
             frame = Image.fromarray(obs[:, :, i*3:i*3+3])
-            frame.save(f'frame{i}.png')
+            # frame.save(f'frame{i}.png')
             frames.append(transform(frame))
         frames = torch.stack(frames, 0)
-        return encoder(frames)
+        frames = encoder(frames)
+        fram = [f for f in frames]
+        fram = torch.cat(fram, 0)
+        return fram.unsqueeze(0)
 
-def test(env, env_name, n_episodes, policy, device, render=True, restore=False, encoder=False):
+def test(env, env_name, n_episodes, policy, device, render=True, restore=False, enc=False):
     #env = gym.wrappers.Monitor(env, './videos/' + 'dqn_breakout_video')
     env = gym.make(env_name)
-    env = make_env(env)
+    env = make_env(env, encoder=enc)
     mean_total_reward = 0
     
     if restore:
@@ -174,7 +180,7 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
 
     for episode in range(n_episodes):
         obs = env.reset()
-        state = get_state(obs, encoder)
+        state = get_state(obs, enc, True)
         total_reward = 0.0
         for t in count():
             action = policy(state.to(device)).max(1)[1].view(1,1)
@@ -194,14 +200,14 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
             state = next_state
 
             if done:
-                #print("Finished Episode {} with reward {}".format(episode, total_reward))
+                print("Finished Episode {} with reward {}".format(episode, total_reward))
                 break
 
         mean_total_reward += total_reward / n_episodes
     env.close()
     return mean_total_reward
 
-def train(env, env_name, n_episodes, steps_done, device, render=False, encoder=False):
+def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False):
 
     if USE_WANDB:
         config['ENV_NAME'] = env_name
@@ -221,14 +227,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, encoder=F
             plt.figure(1)
             plt.imsave('frame.png', img)
 
-        state = get_state(obs, encoder)
-        print(state.shape)
-        if True:
-            outputs = decoder(state)
-            print(torch.max(outputs))
-            img = np.uint8(outputs[0][0].detach().cpu().numpy()*255)
-            print(np.amax(img))
-            cv2.imwrite('mask.png', img)
+        state = get_state(obs, enc)
         
         total_reward = 0.0
         for t in count():
@@ -243,7 +242,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, encoder=F
             total_reward += reward
 
             if not done:
-                next_state = get_state(obs, encoder)
+                next_state = get_state(obs, enc)
             else:
                 next_state = None
 
@@ -265,7 +264,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, encoder=F
                 #    steps_done, episode, n_episodes, total_reward))
 
                 if steps_done > INITIAL_MEMORY and episode % VAL_RATE == 0:
-                    val_reward = test(env, env_name, 10, policy_net, device, render=render)
+                    val_reward = test(env, env_name, 10, policy_net, device, render=render, enc=enc)
                     tqdm.write('Total steps: {} \t Episode: {}/{} \t Eval reward: {}'.format(
                         steps_done, episode, n_episodes, val_reward))
                     if val_reward > best_val_reward:

@@ -30,10 +30,10 @@ if __name__ == '__main__':
     steps_done = 0
 
     # train model
-    train(env, ENV_NAME, NUM_EPISODES, steps_done, device, render=RENDER, encoder=ENCODER)
+    train(env, ENV_NAME, NUM_EPISODES, steps_done, device, render=RENDER, enc=ENCODER)
 
     # test model
-    test(env, ENV_NAME, 100, policy_net, device, render=RENDER, encoder=ENCODER)
+    test(env, ENV_NAME, 100, policy_net, device, render=RENDER, enc=ENCODER)
 
 
 
