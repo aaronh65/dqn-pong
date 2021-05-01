@@ -24,17 +24,18 @@ from autoencoder import AutoEncoder
 from models import ResnetEncoder
 
 import cv2
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 # hyperparameters
 lr = 1e-4
-INITIAL_MEMORY = 10
+INITIAL_MEMORY = 10000
 #INITIAL_MEMORY = 2000
-BATCH_SIZE = 4
+#BATCH_SIZE = 4
+BATCH_SIZE = 32
 GAMMA = 0.99
 EPS_START = 1
 EPS_END = 0.02
-EPS_DECAY = 100000
-VAL_RATE = 1
+EPS_DECAY = 250000
+VAL_RATE = 100
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10 * INITIAL_MEMORY
 
@@ -73,12 +74,14 @@ target_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
 #TODO INIT ENCODER HERE
-a_encoder = AutoEncoder.load_from_checkpoint("/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=3.ckpt")
-encoder = a_encoder.res_encoder.to(device)
+weights_path = "/home/aaronhua/vlr/epoch=3.ckpt"
+#weights_path = "/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=3.ckpt"
+#a_encoder = 
+encoder = AutoEncoder.load_from_checkpoint(weights_path).res_encoder.to(device)
 encoder.eval()
 
-decoder = a_encoder.res_decoder
-decoder.eval()
+#decoder = a_encoder.res_decoder
+#decoder.eval()
 
 transform = T.Compose([
             T.Resize((256, 160)),
@@ -163,12 +166,12 @@ def get_state(obs, enc=False, debug=False):
         frames = encoder(frames)
         fram = [f for f in frames]
         fram = torch.cat(fram, 0)
-        return fram.unsqueeze(0)
+        return fram.unsqueeze(0).detach().cpu()
 
 def test(env, env_name, n_episodes, policy, device, render=True, restore=False, enc=False):
     #env = gym.wrappers.Monitor(env, './videos/' + 'dqn_breakout_video')
     env = gym.make(env_name)
-    env = make_env(env, encoder=enc)
+    env = make_env(env, enc=enc)
     mean_total_reward = 0
     
     if restore:
@@ -193,7 +196,7 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
             total_reward += reward
 
             if not done:
-                next_state = get_state(obs, encoder)
+                next_state = get_state(obs, enc)
             else:
                 next_state = None
 
@@ -224,8 +227,8 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
         
         if False:
             img = obs[:, :, :3] / 255
-            plt.figure(1)
-            plt.imsave('frame.png', img)
+            #plt.figure(1)
+            #plt.imsave('frame.png', img)
 
         state = get_state(obs, enc)
         
