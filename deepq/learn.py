@@ -8,7 +8,7 @@ from tqdm import tqdm
 import gym
 
 import math, time
-
+from PIL import Image
 import wandb
 import torch
 import torch.nn as nn
@@ -20,7 +20,11 @@ from common.atari_wrapper import *
 from deepq.model import *
 from deepq.replay_buffer import ReplayMemory
 from collections import namedtuple
+from autoencoder import AutoEncoder
+from models import ResnetEncoder
 
+import cv2
+from matplotlib import pyplot as plt
 # hyperparameters
 lr = 1e-4
 INITIAL_MEMORY = 10000
@@ -60,12 +64,26 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 memory = ReplayMemory(MEMORY_SIZE)
 
 # create networks
-#policy_net = DQN(n_actions=4).to(device)
-#target_net = DQN(n_actions=4).to(device)
+# policy_net = DQNBase(n_actions=4).to(device)
+# target_net = DQNBase(n_actions=4).to(device)
+# target_net.load_state_dict(policy_net.state_dict())
 
-policy_net = DQNBase(n_actions=4).to(device)
-target_net = DQNBase(n_actions=4).to(device)
+policy_net = DQNEncodedFeatures(n_actions=4).to(device)
+target_net = DQNEncodedFeatures(n_actions=4).to(device)
 target_net.load_state_dict(policy_net.state_dict())
+
+#TODO INIT ENCODER HERE
+a_encoder = AutoEncoder.load_from_checkpoint("/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=4.ckpt")
+encoder = a_encoder.res_encoder
+encoder.eval()
+
+decoder = a_encoder.res_decoder
+decoder.eval()
+
+transform = T.Compose([
+            T.Resize((256, 160)),
+            T.ToTensor()
+            ])
 
 # setup optimizer
 optimizer = optim.Adam(policy_net.parameters(), lr=lr)
@@ -124,26 +142,39 @@ def optimize_model(device):
     optimizer.step()
     return loss
 
-def get_state(obs):
-    state = np.array(obs)
-    state = state.transpose((2, 0, 1))
-    state = torch.from_numpy(state)
-    return state.unsqueeze(0)
+def get_state(obs, enc=False):
+    if not enc:
+        state = np.array(obs)
+        state = state.transpose((2, 0, 1))
+        state = torch.from_numpy(state)
+        return state.unsqueeze(0)
+    else:
+        obs = np.array(obs)
+        obs = np.uint8(obs)
+        frames = []
+        for i in range(4):
+            frame = Image.fromarray(obs[:, :, i*3:i*3+3])
+            frame.save(f'frame{i}.png')
+            frames.append(transform(frame))
+        frames = torch.stack(frames, 0)
+        return encoder(frames)
 
-def test(env, env_name, n_episodes, policy, device, render=True, restore=False):
+def test(env, env_name, n_episodes, policy, device, render=True, restore=False, encoder=False):
     #env = gym.wrappers.Monitor(env, './videos/' + 'dqn_breakout_video')
     env = gym.make(env_name)
     env = make_env(env)
+    mean_total_reward = 0
+    
     if restore:
         path = Path(f"checkpoints/{env_name}")
         ckpts = list(sorted(path.glob("*")))
         if len(ckpts) > 0:
             ckpt = ckpts[-1]
             policy = torch.load(str(ckpt))
-    mean_total_reward = 0
+
     for episode in range(n_episodes):
         obs = env.reset()
-        state = get_state(obs)
+        state = get_state(obs, encoder)
         total_reward = 0.0
         for t in count():
             action = policy(state.to(device)).max(1)[1].view(1,1)
@@ -153,11 +184,10 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False):
                 time.sleep(0.02)
 
             obs, reward, done, info = env.step(action)
-
             total_reward += reward
 
             if not done:
-                next_state = get_state(obs)
+                next_state = get_state(obs, encoder)
             else:
                 next_state = None
 
@@ -171,7 +201,7 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False):
     env.close()
     return mean_total_reward
 
-def train(env, env_name, n_episodes, steps_done, device, render=False):
+def train(env, env_name, n_episodes, steps_done, device, render=False, encoder=False):
 
     if USE_WANDB:
         config['ENV_NAME'] = env_name
@@ -185,7 +215,21 @@ def train(env, env_name, n_episodes, steps_done, device, render=False):
     best_val_reward = -float('inf')
     for episode in tqdm(range(n_episodes)):
         obs = env.reset()
-        state = get_state(obs)
+        
+        if False:
+            img = obs[:, :, :3] / 255
+            plt.figure(1)
+            plt.imsave('frame.png', img)
+
+        state = get_state(obs, encoder)
+        print(state.shape)
+        if True:
+            outputs = decoder(state)
+            print(torch.max(outputs))
+            img = np.uint8(outputs[0][0].detach().cpu().numpy()*255)
+            print(np.amax(img))
+            cv2.imwrite('mask.png', img)
+        
         total_reward = 0.0
         for t in count():
             metrics = {}
@@ -199,7 +243,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False):
             total_reward += reward
 
             if not done:
-                next_state = get_state(obs)
+                next_state = get_state(obs, encoder)
             else:
                 next_state = None
 

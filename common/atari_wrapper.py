@@ -8,7 +8,7 @@ import numpy as np
 import gym
 from PIL import Image
 
-def make_env(env, stack_frames=True, episodic_life=True, clip_rewards=False, scale=False):
+def make_env(env, stack_frames=True, episodic_life=True, clip_rewards=False, scale=False, encoder=False):
 	if episodic_life:
 		env = EpisodicLifeEnv(env)
 
@@ -16,8 +16,10 @@ def make_env(env, stack_frames=True, episodic_life=True, clip_rewards=False, sca
 	env = MaxAndSkipEnv(env, skip=4)
 	if 'FIRE' in env.unwrapped.get_action_meanings():
 		env = FireResetEnv(env)
-
-	env = WarpFrame(env)
+	if not encoder:
+		env = WarpFrame(env)
+	else:
+		env = RGBFrame(env)
 	if stack_frames:
 		env = FrameStack(env, 4)
 	if clip_rewards:
@@ -114,6 +116,23 @@ class WarpFrame(gym.ObservationWrapper):
 		resized_screen = img.resize((84, 84), Image.BILINEAR)
 		resized_screen = np.array(resized_screen)
 		return resized_screen[:, :, None]
+
+class RGBFrame(gym.ObservationWrapper):
+	def __init__(self, env):
+		"""Warp frames to 84x84 as done in the Nature paper and later
+		work."""
+		gym.ObservationWrapper.__init__(self, env)
+		self.width = 210
+		self.height = 160
+		self.observation_space = gym.spaces.Box(low=0, high=255,
+			shape=(self.height, self.width, 3), dtype=np.uint8)
+
+	def observation(self, frame):
+		img = np.reshape(frame, [210, 160, 3]).astype(np.float32)
+		# img = Image.fromarray(img)
+		# resized_screen = img.resize((84, 84), Image.BILINEAR)
+		# resized_screen = np.array(resized_screen)
+		return img
 
 class FireResetEnv(gym.Wrapper):
 	def __init__(self, env=None):

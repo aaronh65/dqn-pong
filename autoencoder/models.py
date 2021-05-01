@@ -49,32 +49,6 @@ class ResnetDecoder(nn.Module):
         x = F.sigmoid(x)
         return x
 
-# DQN MODELS
-
-class DQNBase(nn.Module):
-    def __init__(self, num_actions, history_size=1):
-        super().__init__()
-        self.network = torchvision.models.resnet18(pretrained=False, num_classes=num_actions)
-        #self.network = nn.Sequential(*list(resnet18.children())[:]) 
-        old = self.network.conv1
-        self.network.conv1 = torch.nn.Conv2d(
-            history_size, old.out_channels,
-            kernel_size=old.kernel_size, stride=old.stride,
-            padding=old.padding, bias=old.padding)
-
-    def forward(self, x):
-        x = self.network(x) # N,512,8,5
-        return x
-
-class DQNModel(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        
-        pass
-
-    def forward(self, x):
-        pass
-
 
 
 

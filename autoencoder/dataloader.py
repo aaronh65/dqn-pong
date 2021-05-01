@@ -15,6 +15,7 @@ SHOW = False
 class SkierDataset(Dataset):
     def __init__(self, episodes, env):
         self.frames = list()
+        self.env = env
         for ep_path in episodes:
             rgb_path = ep_path / 'rgb'
             self.frames.extend(sorted(list(rgb_path.glob('*'))))
@@ -35,6 +36,7 @@ class SkierDataset(Dataset):
         rgb = np.array(Image.open(frame))
         
         h,w,c = rgb.shape
+
         masks = list()
         for cls, colors in self.classes_hsv.items():
             mask = np.zeros((h,w)).astype(bool)
@@ -42,6 +44,10 @@ class SkierDataset(Dataset):
                 temp_mask = get_mask(rgb.copy(), color)
                 temp_mask = temp_mask.astype(bool)
                 mask = np.uint8(np.logical_or(mask, temp_mask))*255
+            # block out the top part of the masks so that ball can be reconstructed
+            if self.env == 'PongNoFrameskip-v4':
+                mask[0:35, :] = 0
+                mask[193:, :] = 0
             mask_image = Image.fromarray(mask)
             mask_tensor = self.transform(mask_image)
             res[cls] = mask_tensor
@@ -55,9 +61,9 @@ class SkierDataset(Dataset):
             plt.figure(1)
             plt.imshow(masks)
             plt.show()
-            # cv2.imwrite('rgb.png', rgb)
-            # cv2.imwrite('masks.png', masks)
-            # cv2.waitKey(0)
+            cv2.imwrite('rgb.png', rgb)
+            cv2.imwrite('masks.png', masks)
+            cv2.waitKey(0)
 
         return res
 

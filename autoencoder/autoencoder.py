@@ -160,7 +160,7 @@ class AutoEncoder(pl.LightningModule):
 
 def main(hparams):
     if hparams.log:
-        logger = WandbLogger(save_dir=hparams.save_dir, project='vlr-project')
+        logger = WandbLogger(save_dir=hparams.save_dir, project='dqn-pong')
     else:
         logger = False
 
@@ -178,8 +178,8 @@ def main(hparams):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_dir', type=str, default='data/20210430_152756')
-    parser.add_argument('--gpus', type=int, default=0)
+    parser.add_argument('--dataset_dir', type=str, default='data/pong')
+    parser.add_argument('--gpus', type=int, default=-1)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--max_epochs', type=int, default=2)
