@@ -10,7 +10,7 @@ from atari_masks import get_hsv_colors, get_mask
 
 from matplotlib import pyplot as plt
 
-SHOW = False
+SHOW = True
 
 class SkierDataset(Dataset):
     def __init__(self, episodes, env):
