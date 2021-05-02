@@ -27,21 +27,22 @@ import cv2
 #from matplotlib import pyplot as plt
 # hyperparameters
 lr = 1e-4
-INITIAL_MEMORY = 10000
-#INITIAL_MEMORY = 2000
+#INITIAL_MEMORY = 10000
+INITIAL_MEMORY = 1000
 #BATCH_SIZE = 4
 BATCH_SIZE = 32
 GAMMA = 0.99
 EPS_START = 1
 EPS_END = 0.02
 EPS_DECAY = 250000
-VAL_RATE = 10
+#VAL_RATE = 10
+VAL_RATE = 1
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10 * INITIAL_MEMORY
 
 # program args
 TIME = datetime.now().strftime("%Y%m%d_%H%M%S")
-USE_WANDB = True
+USE_WANDB = False
 
 config = {
         'lr': lr,
@@ -69,23 +70,28 @@ memory = ReplayMemory(MEMORY_SIZE)
 #target_net = DQNBase(n_actions=4).to(device)
 #target_net.load_state_dict(policy_net.state_dict())
 
-policy_net = DQNEncodedFeatures(64, n_actions=4).to(device)
-target_net = DQNEncodedFeatures(64, n_actions=4).to(device)
+#policy_net = DQNEncodedFeatures(512, n_actions=4).to(device)
+#target_net = DQNEncodedFeatures(512, n_actions=4).to(device)
+#target_net.load_state_dict(policy_net.state_dict())
+
+policy_net = DQNEncodedLight(64, n_actions=4).to(device)
+target_net = DQNEncodedLight(64, n_actions=4).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
+
 #TODO INIT ENCODER HERE
-#weights_path = "/home/aaronhua/vlr/epoch=3.ckpt"
-weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858"
+#weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858"
+weights_path = "/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
 #weights_path = "/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=3.ckpt"
 #a_encoder = 
-encoder = AutoEncoder.load_from_checkpoint(weights_path).res_encoder.to(device)
+encoder = AutoEncoder.load_from_checkpoint(weights_path).encoder.to(device)
 encoder.eval()
 
 #decoder = a_encoder.res_decoder
 #decoder.eval()
 
 transform = T.Compose([
-            T.Resize((256, 160)),
+            T.Resize((88, 88)),
             T.ToTensor()
             ])
 

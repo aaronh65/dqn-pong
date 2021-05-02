@@ -13,11 +13,10 @@ ENV_NAME = "PongNoFrameskip-v4"
 # ENV_NAME = "Breakout-v0"
 #NUM_EPISODES = 400
 NUM_EPISODES = 10000
-RENDER=False
+RENDER=True
 
 TIME = datetime.now().strftime("%Y%m%d_%H%M%S")
-USE_WANDB = True
-ENCODER = False
+ENCODER = True
 if __name__ == '__main__':
 
     # set device

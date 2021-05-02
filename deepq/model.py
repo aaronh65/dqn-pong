@@ -70,10 +70,7 @@ class DQNEncodedFeatures(nn.Module):
                n_actions (int): number of outputs
        """
        super(DQNEncodedFeatures, self).__init__()
-       self.downsample = nn.Sequential(
-
-       )
-       self.conv1 = nn.Conv2d(in_channels, 32, kernel_size=1)
+       self.conv1 = nn.Conv2d(in_channels*4, 32, kernel_size=1)
        self.conv2 = nn.Conv2d(32, 16, kernel_size=1)
        self.fc4 = nn.Linear(11 * 11 * 16, 512)
        self.fc4 = nn.Linear(512, 128)
@@ -86,6 +83,40 @@ class DQNEncodedFeatures(nn.Module):
        x = F.relu(self.conv2(x))
        x = F.relu(self.fc4(x.view(x.size(0), -1)))
        return self.head(x)
+
+class DQNEncodedLight(nn.Module):
+   def __init__(self, in_channels=4, n_actions=14):
+
+       """
+       Initialize Deep Q Network
+
+       Args:
+               in_channels (int): number of input channels
+               n_actions (int): number of outputs
+       """
+       super(DQNEncodedLight, self).__init__()
+       self.downsample = nn.Sequential(
+            nn.Conv2d(in_channels*4, 32, kernel_size=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 16, kernel_size=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+       )
+       self.regressor = nn.Sequential(
+            nn.Linear(11*11*16, 512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, n_actions),
+       )
+
+   def forward(self, x):
+       x = self.downsample(x)
+       x = x.view((x.shape[0], -1))
+       x = self.regressor(x)
+       return x
+
 
 # class DQNBase(nn.Module):
 #     def __init__(self, n_actions, history_size=4):
