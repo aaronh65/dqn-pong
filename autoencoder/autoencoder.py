@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-from models import ResnetEncoder, ResnetDecoder
+from models import *
 from dataloader import get_dataloader
 from utils import spatial_norm
 
@@ -25,14 +25,18 @@ class AutoEncoder(pl.LightningModule):
             class_num = 4
         elif self.hparams.env == 'PongNoFrameskip-v4':
             class_num = 3
-        self.res_encoder = ResnetEncoder()
-        self.res_decoder = ResnetDecoder(class_num)
+        self.encoder = Encoder()
+        self.decoder = Decoder(64, class_num)
         self.criterion = nn.MSELoss(reduction='none')
 
+        self.class_weights = torch.ones(self.hparams.batch_size, class_num)
+        if self.hparams.env == 'PongNoFrameskip-v4':
+            self.class_weights[:,2] = 10 # ball class
+
     def forward(self, rgb, decode=True):
-        latent = self.res_encoder(rgb)
+        latent = self.encoder(rgb)
         if decode:
-            pred_masks = self.res_decoder(latent)
+            pred_masks = self.decoder(latent)
             return pred_masks, latent
         else:
             return latent
@@ -51,11 +55,15 @@ class AutoEncoder(pl.LightningModule):
             ball = batch['ball']
             gt_masks = torch.cat((us, them, ball), dim=1)
 
-        latent = self.res_encoder(rgb)
-        pred_masks = self.res_decoder(latent)
+        latent = self.encoder(rgb)
+        #print(latent.shape)
+        pred_masks = self.decoder(latent)
 
         class_loss = self.criterion(pred_masks, gt_masks) # N,C,H,W
-        class_loss = class_loss.sum((-1,-2))
+        class_loss = class_loss.sum((-1,-2)) 
+        if self.hparams.env == 'PongNoFrameskip-v4':
+            class_loss[:,2] *= 10 # higher ball loss
+        #class_loss = class_loss * self.class_weights
 
         metrics = {}
         metrics['train/loss'] = class_loss.mean().item()
@@ -82,8 +90,8 @@ class AutoEncoder(pl.LightningModule):
             ball = batch['ball']
             gt_masks = torch.cat((us, them, ball), dim=1)
 
-        latent = self.res_encoder(rgb)
-        pred_masks = self.res_decoder(latent)
+        latent = self.encoder(rgb)
+        pred_masks = self.decoder(latent)
 
         class_loss = self.criterion(pred_masks, gt_masks)
         class_loss = class_loss.sum((-1,-2))
@@ -119,7 +127,7 @@ class AutoEncoder(pl.LightningModule):
 
     def configure_optimizers(self):
         # add in lr from hparams if default adam sucks
-        optim = torch.optim.Adam(list(self.res_encoder.parameters()) + list(self.res_decoder.parameters())) 
+        optim = torch.optim.Adam(list(self.encoder.parameters()) + list(self.decoder.parameters())) 
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.5, patience=2, min_lr=1e-6, verbose=True)
         return [optim], [scheduler]
 
@@ -178,6 +186,7 @@ def main(hparams):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('-D', '--debug', action='store_true')
     parser.add_argument('--dataset_dir', type=str, default='data/pong')
     parser.add_argument('--gpus', type=int, default=-1)
     parser.add_argument('--batch_size', type=int, default=4)
@@ -189,7 +198,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    save_dir = Path(args.save_dir) / 'autoencoder' / datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = f'debug/{suffix}' if args.debug else suffix
+    save_dir = Path(args.save_dir) / 'autoencoder' / suffix
     save_dir.mkdir(exist_ok=True, parents=True)
     args.save_dir = str(save_dir)
     main(args)

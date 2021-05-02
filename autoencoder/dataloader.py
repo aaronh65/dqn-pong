@@ -10,7 +10,7 @@ from atari_masks import get_hsv_colors, get_mask
 
 from matplotlib import pyplot as plt
 
-SHOW = True
+DEBUG = False
 
 class SkierDataset(Dataset):
     def __init__(self, episodes, env):
@@ -22,7 +22,8 @@ class SkierDataset(Dataset):
         self.classes_hsv = get_hsv_colors(env) # object to hsv color dict
 
         self.transform = transforms.Compose([
-            transforms.Resize((256, 160)),
+            #transforms.Resize((256, 160)),
+            transforms.Resize((88, 88)),
             transforms.ToTensor()
             ])
 
@@ -46,10 +47,11 @@ class SkierDataset(Dataset):
                 mask = np.uint8(np.logical_or(mask, temp_mask))*255
             # block out the top part of the masks so that ball can be reconstructed
             if self.env == 'PongNoFrameskip-v4':
-                mask[0:35, :] = 0
-                mask[193:, :] = 0
+                mask[:h//6] = 0
+                mask[9:h//10:] = 0
             mask_image = Image.fromarray(mask)
             mask_tensor = self.transform(mask_image)
+            mask_tensor[mask_tensor>0.1] = 1
             res[cls] = mask_tensor
             masks.append(mask)
         masks = np.hstack(masks)
@@ -57,13 +59,14 @@ class SkierDataset(Dataset):
         rgb_tensor = self.transform(Image.fromarray(rgb))
         res['rgb']  = rgb_tensor
 
-        if SHOW:
-            plt.figure(1)
-            plt.imshow(masks)
-            plt.show()
-            cv2.imwrite('rgb.png', rgb)
-            cv2.imwrite('masks.png', masks)
+        if DEBUG:
+            cv2.imshow('masks', masks)
             cv2.waitKey(0)
+            cv2.imwrite('rgb.png', cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+            rgb[:h//6] = 50
+            rgb[9*h//10:] = 50
+            cv2.imwrite('rgb_zero.png', cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+            cv2.imwrite('masks.png', masks)
 
         return res
 
