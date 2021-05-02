@@ -65,16 +65,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 memory = ReplayMemory(MEMORY_SIZE)
 
 # create networks
-policy_net = DQNBase(n_actions=4).to(device)
-target_net = DQNBase(n_actions=4).to(device)
-target_net.load_state_dict(policy_net.state_dict())
-
-#policy_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
-#target_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
+#policy_net = DQNBase(n_actions=4).to(device)
+#target_net = DQNBase(n_actions=4).to(device)
 #target_net.load_state_dict(policy_net.state_dict())
 
+policy_net = DQNEncodedFeatures(64, n_actions=4).to(device)
+target_net = DQNEncodedFeatures(64, n_actions=4).to(device)
+target_net.load_state_dict(policy_net.state_dict())
+
 #TODO INIT ENCODER HERE
-weights_path = "/home/aaronhua/vlr/epoch=3.ckpt"
+#weights_path = "/home/aaronhua/vlr/epoch=3.ckpt"
+weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858"
 #weights_path = "/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=3.ckpt"
 #a_encoder = 
 encoder = AutoEncoder.load_from_checkpoint(weights_path).res_encoder.to(device)

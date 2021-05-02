@@ -61,6 +61,7 @@ class DQNBase(nn.Module):
 
 class DQNEncodedFeatures(nn.Module):
    def __init__(self, in_channels=4, n_actions=14):
+
        """
        Initialize Deep Q Network
 
@@ -69,19 +70,22 @@ class DQNEncodedFeatures(nn.Module):
                n_actions (int): number of outputs
        """
        super(DQNEncodedFeatures, self).__init__()
-       self.conv1 = nn.Conv2d(in_channels, 256, kernel_size=1)
-       self.conv2 = nn.Conv2d(256, 64, kernel_size=1)
-    #    self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
-       self.fc4 = nn.Linear(8 * 5 * 64, 512)
+       self.downsample = nn.Sequential(
+
+       )
+       self.conv1 = nn.Conv2d(in_channels, 32, kernel_size=1)
+       self.conv2 = nn.Conv2d(32, 16, kernel_size=1)
+       self.fc4 = nn.Linear(11 * 11 * 16, 512)
+       self.fc4 = nn.Linear(512, 128)
        self.head = nn.Linear(512, n_actions)
 
    def forward(self, x):
-    #    x = x.float() / 255
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-    #    x = F.relu(self.conv3(x))
-        x = F.relu(self.fc4(x.view(x.size(0), -1)))
-        return self.head(x)
+
+        
+       x = F.relu(self.conv1(x))
+       x = F.relu(self.conv2(x))
+       x = F.relu(self.fc4(x.view(x.size(0), -1)))
+       return self.head(x)
 
 # class DQNBase(nn.Module):
 #     def __init__(self, n_actions, history_size=4):
