@@ -5,7 +5,10 @@ import torchvision
 
 # AUTOENCODER MODELS
 
-class DecoderBlock(nn.Module):
+
+class EncoderBlock
+
+class ResDecoderBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.module = nn.Sequential(
@@ -35,11 +38,11 @@ class ResnetDecoder(nn.Module):
     def __init__(self, num_classes=4):
         super().__init__()
         self.upsample = nn.Sequential(
-            DecoderBlock(512, 256),
-            DecoderBlock(256, 128),
-            DecoderBlock(128, 64),
-            DecoderBlock(64, 32),
-            DecoderBlock(32, 16),
+            ResDecoderBlock(512, 256),
+            ResDecoderBlock(256, 128),
+            ResDecoderBlock(128, 64),
+            ResDecoderBlock(64, 32),
+            ResDecoderBlock(32, 16),
         )
         self.project = nn.Conv2d(16, num_classes, 1)
 

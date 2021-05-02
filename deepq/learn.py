@@ -35,7 +35,7 @@ GAMMA = 0.99
 EPS_START = 1
 EPS_END = 0.02
 EPS_DECAY = 250000
-VAL_RATE = 100
+VAL_RATE = 10
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10 * INITIAL_MEMORY
 
@@ -65,13 +65,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 memory = ReplayMemory(MEMORY_SIZE)
 
 # create networks
-# policy_net = DQNBase(n_actions=4).to(device)
-# target_net = DQNBase(n_actions=4).to(device)
-# target_net.load_state_dict(policy_net.state_dict())
-
-policy_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
-target_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
+policy_net = DQNBase(n_actions=4).to(device)
+target_net = DQNBase(n_actions=4).to(device)
 target_net.load_state_dict(policy_net.state_dict())
+
+#policy_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
+#target_net = DQNEncodedFeatures(2048, n_actions=4).to(device)
+#target_net.load_state_dict(policy_net.state_dict())
 
 #TODO INIT ENCODER HERE
 weights_path = "/home/aaronhua/vlr/epoch=3.ckpt"
@@ -270,7 +270,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
                     val_reward = test(env, env_name, 10, policy_net, device, render=render, enc=enc)
                     tqdm.write('Total steps: {} \t Episode: {}/{} \t Eval reward: {}'.format(
                         steps_done, episode, n_episodes, val_reward))
-                    if val_reward > best_val_reward:
+                    if val_reward >= best_val_reward:
                         torch.save(policy_net, f"checkpoints/{env_name}/{TIME}.pt")
                         best_val_reward = val_reward
                     metrics['val_reward'] = val_reward

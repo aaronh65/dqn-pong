@@ -17,7 +17,7 @@ RENDER=False
 
 TIME = datetime.now().strftime("%Y%m%d_%H%M%S")
 USE_WANDB = True
-ENCODER = True
+ENCODER = False
 if __name__ == '__main__':
 
     # set device
