@@ -10,13 +10,11 @@ from deepq.model import *
 from deepq.learn import *
 
 ENV_NAME = "PongNoFrameskip-v4"
-# ENV_NAME = "Breakout-v0"
-#NUM_EPISODES = 400
-NUM_EPISODES = 10000
-RENDER=False
-
-TIME = datetime.now().strftime("%Y%m%d_%H%M%S")
+NUM_EPISODES = 5000
+RENDER = True
 ENCODER = True
+USE_WANDB = True
+
 if __name__ == '__main__':
 
     # set device
@@ -29,7 +27,7 @@ if __name__ == '__main__':
     steps_done = 0
 
     # train model
-    train(env, ENV_NAME, NUM_EPISODES, steps_done, device, render=RENDER, enc=ENCODER)
+    train(env, ENV_NAME, NUM_EPISODES, steps_done, device, render=RENDER, enc=ENCODER, use_wandb=USE_WANDB)
 
     # test model
     test(env, ENV_NAME, 100, policy_net, device, render=RENDER, enc=ENCODER)
