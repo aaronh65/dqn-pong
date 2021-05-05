@@ -24,9 +24,9 @@ class AutoEncoder(pl.LightningModule):
         if self.hparams.env == 'Skiing-v0':
             class_num = 4
         elif self.hparams.env == 'PongNoFrameskip-v4':
-            # class_num = 3
+            class_num = 3
             # 2 for only reconstructing us and ball
-            class_num = 2
+            #class_num = 2
         self.encoder = Encoder()
         self.decoder = Decoder(64, class_num)
         self.criterion = nn.MSELoss(reduction='none')

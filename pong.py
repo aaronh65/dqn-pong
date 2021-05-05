@@ -13,7 +13,7 @@ ENV_NAME = "PongNoFrameskip-v4"
 NUM_EPISODES = 5000
 RENDER = True
 ENCODER = True
-USE_WANDB = True
+USE_WANDB = False
 
 if __name__ == '__main__':
 

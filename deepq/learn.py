@@ -53,6 +53,7 @@ save_dir.mkdir(parents=True,exist_ok=False) # do not overwrite if exists
 (save_dir / 'images').mkdir()
 encoder_path = "/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
 
+
 config = {
         'lr': lr,
         'initial_memory': INITIAL_MEMORY,
@@ -89,12 +90,23 @@ memory = ReplayMemory(MEMORY_SIZE)
 policy_net = DQNEncodedLight(64, n_actions=4).to(device)
 target_net = DQNEncodedLight(64, n_actions=4).to(device)
 target_net.load_state_dict(policy_net.state_dict())
+with open(str(save_dir / 'policy_config.txt'), 'w') as f:
+    f.write(str(policy_net))
+
 
 
 #TODO INIT ENCODER HERE
 #weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
-encoder = AutoEncoder.load_from_checkpoint(encoder_path).encoder.to(device)
+auto_encoder = AutoEncoder.load_from_checkpoint(encoder_path).to(device)
+encoder = auto_encoder.encoder
+decoder = auto_encoder.decoder
 encoder.eval()
+
+with open(str(save_dir / 'encoder_config.txt'), 'w') as f:
+    f.write(str(encoder))
+with open(str(save_dir / 'decoder_config.txt'), 'w') as f:
+    f.write(str(decoder))
+
 
 #decoder = a_encoder.res_decoder
 #decoder.eval()
