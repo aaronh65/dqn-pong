@@ -70,10 +70,10 @@ encoder_ids = [
         '20210505_165856',
         ]
 
-ID = 1
+ID = 7
 
-#encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
-encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+#encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
 auto_encoder = AutoEncoder.load_from_checkpoint(encoder_path).to(device)
 encoder = auto_encoder.encoder
 decoder = auto_encoder.decoder
@@ -124,7 +124,7 @@ config = {
         'debug': DEBUG,
 }
 
-
+start = time.time()
 
 
 #decoder = a_encoder.res_decoder
@@ -313,13 +313,13 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
             if steps_done > INITIAL_MEMORY: # BURN IN
                 loss = optimize_model(device)
                 metrics['loss'] = loss.item()
-                metrics['episode'] = episode
 
                 if steps_done % TARGET_UPDATE == 0:
                     target_net.load_state_dict(policy_net.state_dict())
                 
             if done:
                 metrics['train_reward'] = total_reward 
+                metrics['episode'] = episode
                 #tqdm.write('Total steps: {} \t Episode: {}/{} \t Train reward: {}'.format(
                 #    steps_done, episode, n_episodes, total_reward))
 
@@ -331,6 +331,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
                         torch.save(policy_net, str(save_dir / 'best.pt'))
                         best_val_reward = val_reward
                     metrics['val_reward'] = val_reward
+                metrics['wall_time'] = time.time() - start
 
                 if use_wandb: # log before we go to next episode
                     wandb.log(metrics)
