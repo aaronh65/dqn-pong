@@ -35,8 +35,9 @@ def get_hsv_colors(env_name='PongNoFrameskip-v4'):
         ball = np.uint8([[[236,236,236]]])
         classes_rgb = {
             'us': us_rgb,
-            'them': them_rgb,
             'ball': ball,
+            # 'them': them_rgb,
+
         }
     elif env_name == 'Breakout-v0':
         # same for breakout if we want to do breakout at all

@@ -24,14 +24,17 @@ class AutoEncoder(pl.LightningModule):
         if self.hparams.env == 'Skiing-v0':
             class_num = 4
         elif self.hparams.env == 'PongNoFrameskip-v4':
-            class_num = 3
+            # class_num = 3
+            # 2 for only reconstructing us and ball
+            class_num = 2
         self.encoder = Encoder()
         self.decoder = Decoder(64, class_num)
         self.criterion = nn.MSELoss(reduction='none')
 
         self.class_weights = torch.ones(self.hparams.batch_size, class_num)
         if self.hparams.env == 'PongNoFrameskip-v4':
-            self.class_weights[:,2] = 10 # ball class
+            self.class_weights[:,1] = 10 # ball class
+
 
     def forward(self, rgb, decode=True):
         latent = self.encoder(rgb)
@@ -51,19 +54,19 @@ class AutoEncoder(pl.LightningModule):
             gt_masks = torch.cat((skier, flags, rocks, trees), dim=1)
         elif self.hparams.env == 'PongNoFrameskip-v4':
             us = batch['us']
-            them = batch['them']
+            # them = batch['them']
             ball = batch['ball']
-            gt_masks = torch.cat((us, them, ball), dim=1)
+            # gt_masks = torch.cat((us, them, ball), dim=1)
+            gt_masks = torch.cat((us, ball), dim=1)
+
 
         latent = self.encoder(rgb)
-        #print(latent.shape)
         pred_masks = self.decoder(latent)
 
         class_loss = self.criterion(pred_masks, gt_masks) # N,C,H,W
         class_loss = class_loss.sum((-1,-2)) 
         if self.hparams.env == 'PongNoFrameskip-v4':
-            class_loss[:,2] *= 10 # higher ball loss
-        #class_loss = class_loss * self.class_weights
+            class_loss[:,1] *= 10 # higher ball loss
 
         metrics = {}
         metrics['train/loss'] = class_loss.mean().item()
@@ -86,9 +89,11 @@ class AutoEncoder(pl.LightningModule):
             gt_masks = torch.cat((skier, flags, rocks, trees), dim=1)
         elif self.hparams.env == 'PongNoFrameskip-v4':
             us = batch['us']
-            them = batch['them']
+            # them = batch['them']
             ball = batch['ball']
-            gt_masks = torch.cat((us, them, ball), dim=1)
+            # gt_masks = torch.cat((us, them, ball), dim=1)
+            gt_masks = torch.cat((us, ball), dim=1)
+
 
         latent = self.encoder(rgb)
         pred_masks = self.decoder(latent)
