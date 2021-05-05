@@ -25,37 +25,48 @@ from models import ResnetEncoder
 
 import cv2
 #from matplotlib import pyplot as plt
+
+DEBUG = True
+
 # hyperparameters
 lr = 1e-4
-INITIAL_MEMORY = 10000
-#INITIAL_MEMORY = 1000
-#BATCH_SIZE = 4
+if DEBUG:
+    INITIAL_MEMORY = 200
+    VAL_RATE = 1
+    print('DEBUG')
+else:
+    INITIAL_MEMORY = 10000
+    VAL_RATE = 10
+
 BATCH_SIZE = 32
 GAMMA = 0.99
 EPS_START = 1
 EPS_END = 0.02
 EPS_DECAY = 250000
-VAL_RATE = 10
-#VAL_RATE = 1
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10 * INITIAL_MEMORY
 
 # program args
-TIME = datetime.now().strftime("%Y%m%d_%H%M%S")
-USE_WANDB = True
+dt_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+save_dir = Path(f"checkpoints/PongNoFrameskip-v4/{dt_str}")
+save_dir.mkdir(parents=True,exist_ok=False) # do not overwrite if exists
+(save_dir / 'images').mkdir()
+encoder_path = "/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
 
 config = {
         'lr': lr,
-        'INITIAL_MEMORY': INITIAL_MEMORY,
-        'BATCH_SIZE': BATCH_SIZE,
-        'GAMMA': GAMMA,
-        'EPS_START': EPS_START,
-        'EPS_END': EPS_END,
-        'EPS_DECAY': EPS_DECAY,
-        'VAL_RATE': VAL_RATE,
-        'TARGET_UPDATE': TARGET_UPDATE,
-        'MEMORY_SIZE': MEMORY_SIZE,
-        'TIME': TIME,
+        'initial_memory': INITIAL_MEMORY,
+        'batch_size': BATCH_SIZE,
+        'gamma': GAMMA,
+        'eps_start': EPS_START,
+        'eps_end': EPS_END,
+        'eps_decay': EPS_DECAY,
+        'val_rate': VAL_RATE,
+        'target_update': TARGET_UPDATE,
+        'memory_size': MEMORY_SIZE,
+        'time': dt_str,
+        'encoder_path': encoder_path,
+        'debug': DEBUG,
 }
 
 Transition = namedtuple('Transition',
@@ -81,11 +92,8 @@ target_net.load_state_dict(policy_net.state_dict())
 
 
 #TODO INIT ENCODER HERE
-weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
-#weights_path = "/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
-#weights_path = "/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=3.ckpt"
-#a_encoder = 
-encoder = AutoEncoder.load_from_checkpoint(weights_path).encoder.to(device)
+#weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
+encoder = AutoEncoder.load_from_checkpoint(encoder_path).encoder.to(device)
 encoder.eval()
 
 #decoder = a_encoder.res_decoder
@@ -189,6 +197,9 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
             ckpt = ckpts[-1]
             policy = torch.load(str(ckpt))
 
+    num_train_eps = len(list((save_dir / 'images').glob('*')))
+    image_root = save_dir / 'images' / f'episode_{num_train_eps:06d}'
+    image_root.mkdir()
     for episode in range(n_episodes):
         obs = env.reset()
         state = get_state(obs, enc)
@@ -210,6 +221,12 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
 
             state = next_state
 
+            if episode == 0: # save val images
+                path = image_root / f'{t:06d}.png'
+                img = np.uint8(np.array(obs))
+                img = img[:,:,-3:]
+                img = Image.fromarray(img).save(str(path))
+    
             if done:
                 print("Finished Episode {} with reward {}".format(episode, total_reward))
                 break
@@ -218,9 +235,9 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
     env.close()
     return mean_total_reward
 
-def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False):
+def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False, use_wandb=False):
 
-    if USE_WANDB:
+    if use_wandb:
         config['ENV_NAME'] = env_name
         config['NUM_EPISODES'] = n_episodes
         wandb.init('vlr-project-dqn')
@@ -279,15 +296,15 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
                     tqdm.write('Total steps: {} \t Episode: {}/{} \t Eval reward: {}'.format(
                         steps_done, episode, n_episodes, val_reward))
                     if val_reward >= best_val_reward:
-                        torch.save(policy_net, f"checkpoints/{env_name}/{TIME}.pt")
+                        torch.save(policy_net, str(save_dir / 'best.pt'))
                         best_val_reward = val_reward
                     metrics['val_reward'] = val_reward
 
-                if USE_WANDB: # log before we go to next episode
+                if use_wandb: # log before we go to next episode
                     wandb.log(metrics)
                 break
 
-            if USE_WANDB:
+            if use_wandb:
                 wandb.log(metrics)
             
     env.close()
