@@ -55,6 +55,7 @@ config = {
         'VAL_RATE': VAL_RATE,
         'TARGET_UPDATE': TARGET_UPDATE,
         'MEMORY_SIZE': MEMORY_SIZE,
+        'TIME': TIME,
 }
 
 Transition = namedtuple('Transition',
