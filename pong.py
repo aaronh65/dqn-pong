@@ -11,9 +11,9 @@ from deepq.learn import *
 
 ENV_NAME = "PongNoFrameskip-v4"
 NUM_EPISODES = 5000
-RENDER = True
+RENDER = False
 ENCODER = True
-USE_WANDB = False
+USE_WANDB = True
 
 if __name__ == '__main__':
 

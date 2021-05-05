@@ -26,17 +26,23 @@ from models import ResnetEncoder
 import cv2
 #from matplotlib import pyplot as plt
 
-DEBUG = True
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+DEBUG = False
+
 
 # hyperparameters
 lr = 1e-4
 if DEBUG:
     INITIAL_MEMORY = 200
     VAL_RATE = 1
+    VAL_EPISODES = 1
     print('DEBUG')
 else:
     INITIAL_MEMORY = 10000
     VAL_RATE = 10
+    VAL_EPISODES=10
 
 BATCH_SIZE = 32
 GAMMA = 0.99
@@ -46,34 +52,36 @@ EPS_DECAY = 250000
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10 * INITIAL_MEMORY
 
+
+
 # program args
 dt_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 save_dir = Path(f"checkpoints/PongNoFrameskip-v4/{dt_str}")
 save_dir.mkdir(parents=True,exist_ok=False) # do not overwrite if exists
 (save_dir / 'images').mkdir()
-encoder_path = "/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
+encoder_ids = [
+        '20210505_165831', 
+        '20210505_165834', 
+        '20210505_165837', 
+        '20210505_165841', 
+        '20210505_165845', 
+        '20210505_165848', 
+        '20210505_165852', 
+        '20210505_165856',
+        ]
 
+ID = 1
 
-config = {
-        'lr': lr,
-        'initial_memory': INITIAL_MEMORY,
-        'batch_size': BATCH_SIZE,
-        'gamma': GAMMA,
-        'eps_start': EPS_START,
-        'eps_end': EPS_END,
-        'eps_decay': EPS_DECAY,
-        'val_rate': VAL_RATE,
-        'target_update': TARGET_UPDATE,
-        'memory_size': MEMORY_SIZE,
-        'time': dt_str,
-        'encoder_path': encoder_path,
-        'debug': DEBUG,
-}
+#encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+auto_encoder = AutoEncoder.load_from_checkpoint(encoder_path).to(device)
+encoder = auto_encoder.encoder
+decoder = auto_encoder.decoder
+encoder.eval()
 
 Transition = namedtuple('Transition',
 			('state', 'action', 'next_state', 'reward'))
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # initialize replay memory
 memory = ReplayMemory(MEMORY_SIZE)
@@ -87,25 +95,36 @@ memory = ReplayMemory(MEMORY_SIZE)
 #target_net = DQNEncodedFeatures(512, n_actions=4).to(device)
 #target_net.load_state_dict(policy_net.state_dict())
 
-policy_net = DQNEncodedLight(64, n_actions=4).to(device)
-target_net = DQNEncodedLight(64, n_actions=4).to(device)
+policy_net = DQNEncodedLight(auto_encoder.hparams.k*16, n_actions=4).to(device)
+target_net = DQNEncodedLight(auto_encoder.hparams.k*16, n_actions=4).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 with open(str(save_dir / 'policy_config.txt'), 'w') as f:
     f.write(str(policy_net))
-
-
-
-#TODO INIT ENCODER HERE
-#weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
-auto_encoder = AutoEncoder.load_from_checkpoint(encoder_path).to(device)
-encoder = auto_encoder.encoder
-decoder = auto_encoder.decoder
-encoder.eval()
-
 with open(str(save_dir / 'encoder_config.txt'), 'w') as f:
     f.write(str(encoder))
 with open(str(save_dir / 'decoder_config.txt'), 'w') as f:
     f.write(str(decoder))
+
+config = {
+        'lr': lr,
+        'initial_memory': INITIAL_MEMORY,
+        'batch_size': BATCH_SIZE,
+        'gamma': GAMMA,
+        'eps_start': EPS_START,
+        'eps_end': EPS_END,
+        'eps_decay': EPS_DECAY,
+        'val_rate': VAL_RATE,
+        'val_episodes': VAL_EPISODES,
+        'target_update': TARGET_UPDATE,
+        'memory_size': MEMORY_SIZE,
+        'dqn_id': dt_str,
+        'id': encoder_ids[ID],
+        'k': auto_encoder.hparams.k,
+        'mask_them': auto_encoder.hparams.mask_them,
+        'debug': DEBUG,
+}
+
+
 
 
 #decoder = a_encoder.res_decoder
@@ -294,6 +313,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
             if steps_done > INITIAL_MEMORY: # BURN IN
                 loss = optimize_model(device)
                 metrics['loss'] = loss.item()
+                metrics['episode'] = episode
 
                 if steps_done % TARGET_UPDATE == 0:
                     target_net.load_state_dict(policy_net.state_dict())
@@ -304,7 +324,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
                 #    steps_done, episode, n_episodes, total_reward))
 
                 if steps_done > INITIAL_MEMORY and episode % VAL_RATE == 0:
-                    val_reward = test(env, env_name, 10, policy_net, device, render=render, enc=enc)
+                    val_reward = test(env, env_name, VAL_EPISODES, policy_net, device, render=render, enc=enc)
                     tqdm.write('Total steps: {} \t Episode: {}/{} \t Eval reward: {}'.format(
                         steps_done, episode, n_episodes, val_reward))
                     if val_reward >= best_val_reward:

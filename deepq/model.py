@@ -77,7 +77,6 @@ class DQNEncodedFeatures(nn.Module):
        self.head = nn.Linear(512, n_actions)
 
    def forward(self, x):
-
         
        x = F.relu(self.conv1(x))
        x = F.relu(self.conv2(x))
