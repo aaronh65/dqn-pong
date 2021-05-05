@@ -27,22 +27,22 @@ import cv2
 #from matplotlib import pyplot as plt
 # hyperparameters
 lr = 1e-4
-#INITIAL_MEMORY = 10000
-INITIAL_MEMORY = 1000
+INITIAL_MEMORY = 10000
+#INITIAL_MEMORY = 1000
 #BATCH_SIZE = 4
 BATCH_SIZE = 32
 GAMMA = 0.99
 EPS_START = 1
 EPS_END = 0.02
 EPS_DECAY = 250000
-#VAL_RATE = 10
-VAL_RATE = 1
+VAL_RATE = 10
+#VAL_RATE = 1
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10 * INITIAL_MEMORY
 
 # program args
 TIME = datetime.now().strftime("%Y%m%d_%H%M%S")
-USE_WANDB = False
+USE_WANDB = True
 
 config = {
         'lr': lr,
@@ -80,8 +80,8 @@ target_net.load_state_dict(policy_net.state_dict())
 
 
 #TODO INIT ENCODER HERE
-#weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858"
-weights_path = "/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
+weights_path = "/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
+#weights_path = "/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/autoencoder/20210502_143858/epoch=9.ckpt"
 #weights_path = "/data/dqn-pong/autoencoder/checkpoints/autoencoder/20210501_020756/epoch=3.ckpt"
 #a_encoder = 
 encoder = AutoEncoder.load_from_checkpoint(weights_path).encoder.to(device)
@@ -190,7 +190,7 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
 
     for episode in range(n_episodes):
         obs = env.reset()
-        state = get_state(obs, enc, True)
+        state = get_state(obs, enc)
         total_reward = 0.0
         for t in count():
             action = policy(state.to(device)).max(1)[1].view(1,1)
