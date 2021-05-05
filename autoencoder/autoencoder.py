@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 import numpy as np
 import argparse
 
-DISPLAY=True
+DISPLAY=False
 
 class AutoEncoder(pl.LightningModule):
     def __init__(self, hparams):
@@ -194,22 +194,25 @@ def main(hparams):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-D', '--debug', action='store_true')
+    parser.add_argument('-G', '--gpus', type=int, nargs='+', default=[-1])
     parser.add_argument('--dataset_dir', type=str, default='data/pong')
-    parser.add_argument('-G', '--gpus', type=int, default=-1)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--max_epochs', type=int, default=2)
+    parser.add_argument('--max_epochs', type=int, default=20)
     parser.add_argument('--k', type=int, required=True)
     parser.add_argument('--save_dir', type=str, default='checkpoints')
     parser.add_argument('--mask_them', action='store_true')
     parser.add_argument('--log', action='store_true')
     parser.add_argument('--env', type=str, default='PongNoFrameskip-v4')
+    parser.add_argument('--id', type=str, default=datetime.now().strftime("%Y%m%d_%H%M%S"))
 
     args = parser.parse_args()
 
-    suffix = datetime.now().strftime("%Y%m%d_%H%M%S")
-    suffix = f'debug/{suffix}' if args.debug else suffix
-    save_dir = Path(args.save_dir) / 'autoencoder' / suffix
+    if args.gpus[0] == -1:
+        args.gpus = -1
+
+    suffix = f'debug/{args.id}' if args.debug else args.id
+    save_dir = Path(args.save_dir) / suffix
     save_dir.mkdir(exist_ok=True, parents=True)
     args.save_dir = str(save_dir)
     main(args)
