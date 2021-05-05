@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 import numpy as np
 import argparse
 
-DISPLAY=False
+DISPLAY=True
 
 class AutoEncoder(pl.LightningModule):
     def __init__(self, hparams):
@@ -24,11 +24,13 @@ class AutoEncoder(pl.LightningModule):
         if self.hparams.env == 'Skiing-v0':
             class_num = 4
         elif self.hparams.env == 'PongNoFrameskip-v4':
-            class_num = 3
             # 2 for only reconstructing us and ball
-            #class_num = 2
-        self.encoder = Encoder()
-        self.decoder = Decoder(64, class_num)
+            if self.hparams.mask_them:
+                class_num = 2
+            else:
+                class_num = 3
+        self.encoder = Encoder(k=hparams.k)
+        self.decoder = Decoder(hparams.k*16, class_num)
         self.criterion = nn.MSELoss(reduction='none')
 
         self.class_weights = torch.ones(self.hparams.batch_size, class_num)
@@ -54,11 +56,12 @@ class AutoEncoder(pl.LightningModule):
             gt_masks = torch.cat((skier, flags, rocks, trees), dim=1)
         elif self.hparams.env == 'PongNoFrameskip-v4':
             us = batch['us']
-            # them = batch['them']
             ball = batch['ball']
-            # gt_masks = torch.cat((us, them, ball), dim=1)
-            gt_masks = torch.cat((us, ball), dim=1)
-
+            them = batch['them']
+            if self.hparams.mask_them:
+                gt_masks = torch.cat((us, ball), dim=1)
+            else:
+                gt_masks = torch.cat((us, ball, them), dim=1)
 
         latent = self.encoder(rgb)
         pred_masks = self.decoder(latent)
@@ -70,8 +73,7 @@ class AutoEncoder(pl.LightningModule):
 
         metrics = {}
         metrics['train/loss'] = class_loss.mean().item()
-
-        if self.global_step % 50 == 0:
+        if batch_nb % 50 == 0:
             visuals = self.make_visuals(rgb, gt_masks, pred_masks)
             metrics['train_image'] = wandb.Image(visuals)
         if self.logger is not None:
@@ -89,11 +91,12 @@ class AutoEncoder(pl.LightningModule):
             gt_masks = torch.cat((skier, flags, rocks, trees), dim=1)
         elif self.hparams.env == 'PongNoFrameskip-v4':
             us = batch['us']
-            # them = batch['them']
             ball = batch['ball']
-            # gt_masks = torch.cat((us, them, ball), dim=1)
-            gt_masks = torch.cat((us, ball), dim=1)
-
+            them = batch['them']
+            if self.hparams.mask_them:
+                gt_masks = torch.cat((us, ball), dim=1)
+            else:
+                gt_masks = torch.cat((us, ball, them), dim=1)
 
         latent = self.encoder(rgb)
         pred_masks = self.decoder(latent)
@@ -147,7 +150,6 @@ class AutoEncoder(pl.LightningModule):
             num_classes = gt_masks.shape[1]
 
             # normalize and convert to numpy
-            
             for c in range(num_classes):
 
                 _rgb = np.uint8(rgb[b]*255) # H,W,3
@@ -193,11 +195,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-D', '--debug', action='store_true')
     parser.add_argument('--dataset_dir', type=str, default='data/pong')
-    parser.add_argument('--gpus', type=int, default=-1)
+    parser.add_argument('-G', '--gpus', type=int, default=-1)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--max_epochs', type=int, default=2)
+    parser.add_argument('--k', type=int, required=True)
     parser.add_argument('--save_dir', type=str, default='checkpoints')
+    parser.add_argument('--mask_them', action='store_true')
     parser.add_argument('--log', action='store_true')
     parser.add_argument('--env', type=str, default='PongNoFrameskip-v4')
 

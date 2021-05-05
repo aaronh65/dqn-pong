@@ -36,7 +36,7 @@ def get_hsv_colors(env_name='PongNoFrameskip-v4'):
         classes_rgb = {
             'us': us_rgb,
             'ball': ball,
-            # 'them': them_rgb,
+            'them': them_rgb,
 
         }
     elif env_name == 'Breakout-v0':
