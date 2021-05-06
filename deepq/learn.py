@@ -31,7 +31,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 DEBUG = False
 
-
 # hyperparameters
 lr = 1e-4
 if DEBUG:
@@ -70,10 +69,10 @@ encoder_ids = [
         '20210505_165856',
         ]
 
-ID = 7
+ID = 0
 
-encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
-#encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+#encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
 auto_encoder = AutoEncoder.load_from_checkpoint(encoder_path).to(device)
 encoder = auto_encoder.encoder
 decoder = auto_encoder.decoder
@@ -203,8 +202,6 @@ def get_state(obs, enc=False, debug=False):
         obs = np.array(obs)
         obs = np.uint8(obs)
         frames = []
-        if debug:
-            print(obs.shape)
         for i in range(4):
             frame = Image.fromarray(obs[:, :, i*3:i*3+3])
             # frame.save(f'frame{i}.png')
@@ -238,12 +235,12 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
         state = get_state(obs, enc)
         total_reward = 0.0
         for t in count():
-            with torch.no_grad()
+            with torch.no_grad():
                 action = policy(state.to(device)).max(1)[1].view(1,1)
 
             if render:
                 env.render()
-                time.sleep(0.02)
+                #time.sleep(0.02)
 
             obs, reward, done, info = env.step(action)
             total_reward += reward
@@ -262,7 +259,7 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
                 img = Image.fromarray(img).save(str(path))
     
             if done:
-                print("Finished Episode {} with reward {}".format(episode, total_reward))
+                tqdm.write("Finished Episode {} with reward {}".format(episode, total_reward))
                 break
 
         mean_total_reward += total_reward / n_episodes
@@ -271,74 +268,76 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
 
 def train(env, env_name, n_steps, steps_done, device, render=False, enc=False, use_wandb=False):
 
-    if use_wandb:
-        config['ENV_NAME'] = env_name
-        config['NUM_EPISODES'] = n_episodes
-        wandb.init('vlr-project-dqn')
-        wandb.config.update(config)
-
     path = Path(f"checkpoints/{env_name}")
     path.mkdir(parents=True,exist_ok=True)
-
-    best_val_reward = -float('inf')
+    if use_wandb:
+        config['ENV_NAME'] = env_name
+        config['NUM_STEPS'] = n_steps
+        wandb.init()
+        wandb.config.update(config)
+    
+    metrics = {}
     episode = 0
+    total_reward = 0.0
+    best_val_reward = -float('inf')
     obs = env.reset()
+    state = get_state(obs, enc)
     for training_step in tqdm(range(n_steps)):
         
-        state = get_state(obs, enc)
-        
-        total_reward = 0.0
-        for t in count():
-            metrics = {}
-            action, steps_done = select_action(state, steps_done, device)
+        action, steps_done = select_action(state, steps_done, device)
 
-            if render:
-                env.render()
+        if render:
+            env.render()
 
-            obs, reward, done, info = env.step(action)
+        obs, reward, done, info = env.step(action)
 
-            total_reward += reward
+        total_reward += reward
 
-            if not done:
-                next_state = get_state(obs, enc)
-            else:
-                next_state = None
+        if not done:
+            next_state = get_state(obs, enc)
+        else:
+            next_state = None
 
-            reward = torch.tensor([reward], device=device)
+        reward = torch.tensor([reward], device=device)
 
-            memory.push(state, action.to(device), next_state, reward.to(device))
-            state = next_state
+        memory.push(state, action.to(device), next_state, reward.to(device))
+        state = next_state
 
-            if steps_done > INITIAL_MEMORY: # BURN IN
-                loss = optimize_model(device)
-                metrics['loss'] = loss.item()
+        if steps_done > INITIAL_MEMORY: # BURN IN
+            loss = optimize_model(device)
+            metrics['loss'] = loss.item()
 
-                if steps_done % TARGET_UPDATE == 0:
-                    target_net.load_state_dict(policy_net.state_dict())
-                
-            if done:
-                metrics['train_reward'] = total_reward 
-                metrics['episode'] = episode
-                #tqdm.write('Total steps: {} \t Episode: {}/{} \t Train reward: {}'.format(
-                #    steps_done, episode, n_episodes, total_reward))
-
-                if steps_done > INITIAL_MEMORY and episode % VAL_RATE == 0:
-                    val_reward = test(env, env_name, VAL_EPISODES, policy_net, device, render=render, enc=enc)
-                    tqdm.write('Total steps: {} \t Episode: {}/{} \t Eval reward: {}'.format(
-                        steps_done, episode, n_episodes, val_reward))
-                    if val_reward >= best_val_reward:
-                        torch.save(policy_net, str(save_dir / 'best.pt'))
-                        best_val_reward = val_reward
-                    metrics['val_reward'] = val_reward
-                metrics['wall_time'] = time.time() - start
-
-                if use_wandb: # log before we go to next episode
-                    wandb.log(metrics)
-                obs = env.reset()
-
-            if use_wandb:
-                wandb.log(metrics)
+            if steps_done % TARGET_UPDATE == 0:
+                target_net.load_state_dict(policy_net.state_dict())
             
+        if done:
+            #tqdm.write('Total steps: {} \t Episode: {}/{} \t Train reward: {}'.format(
+            #    steps_done, episode, n_episodes, total_reward))
+
+            # eval
+            if steps_done > INITIAL_MEMORY and episode % VAL_RATE == 0:
+                val_reward = test(env, env_name, VAL_EPISODES, policy_net, device, render=render, enc=enc)
+                tqdm.write('Total steps: {}/{} \t Episode: {} \t Eval reward: {}'.format(
+                    steps_done, n_steps, episode, val_reward))
+                if val_reward >= best_val_reward:
+                    torch.save(policy_net, str(save_dir / 'best.pt'))
+                    best_val_reward = val_reward
+                metrics['val_reward'] = val_reward
+
+            # log metrics
+            metrics['wall_time'] = time.time() - start
+            metrics['train_reward'] = total_reward 
+            metrics['episode'] = episode
+
+            # reset for next episode
+            episode += 1
+            obs = env.reset()
+            state = get_state(obs, enc)
+            total_reward = 0.0
+
+        if use_wandb and len(metrics.keys()) > 0:
+            wandb.log(metrics)
+        
     env.close()
     return
 
