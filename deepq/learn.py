@@ -210,11 +210,13 @@ def get_state(obs, enc=False, debug=False):
             # frame.save(f'frame{i}.png')
             frames.append(transform(frame))
         frames = torch.stack(frames, 0).to(device)
-        frames = encoder(frames)
+        with torch.no_grad():
+            frames = encoder(frames)
         fram = [f for f in frames]
         fram = torch.cat(fram, 0)
         return fram.unsqueeze(0).detach().cpu()
 
+@torch.no_grad()
 def test(env, env_name, n_episodes, policy, device, render=True, restore=False, enc=False):
     #env = gym.wrappers.Monitor(env, './videos/' + 'dqn_breakout_video')
     env = gym.make(env_name)
@@ -236,7 +238,8 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
         state = get_state(obs, enc)
         total_reward = 0.0
         for t in count():
-            action = policy(state.to(device)).max(1)[1].view(1,1)
+            with torch.no_grad()
+                action = policy(state.to(device)).max(1)[1].view(1,1)
 
             if render:
                 env.render()
@@ -266,7 +269,7 @@ def test(env, env_name, n_episodes, policy, device, render=True, restore=False, 
     env.close()
     return mean_total_reward
 
-def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False, use_wandb=False):
+def train(env, env_name, n_steps, steps_done, device, render=False, enc=False, use_wandb=False):
 
     if use_wandb:
         config['ENV_NAME'] = env_name
@@ -278,14 +281,10 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
     path.mkdir(parents=True,exist_ok=True)
 
     best_val_reward = -float('inf')
-    for episode in tqdm(range(n_episodes)):
-        obs = env.reset()
+    episode = 0
+    obs = env.reset()
+    for training_step in tqdm(range(n_steps)):
         
-        if False:
-            img = obs[:, :, :3] / 255
-            #plt.figure(1)
-            #plt.imsave('frame.png', img)
-
         state = get_state(obs, enc)
         
         total_reward = 0.0
@@ -335,7 +334,7 @@ def train(env, env_name, n_episodes, steps_done, device, render=False, enc=False
 
                 if use_wandb: # log before we go to next episode
                     wandb.log(metrics)
-                break
+                obs = env.reset()
 
             if use_wandb:
                 wandb.log(metrics)
