@@ -69,10 +69,10 @@ encoder_ids = [
         '20210505_165856',
         ]
 
-ID = 0
+ID = 1
 
-#encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
-encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+#encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
 auto_encoder = AutoEncoder.load_from_checkpoint(encoder_path).to(device)
 encoder = auto_encoder.encoder
 decoder = auto_encoder.decoder
