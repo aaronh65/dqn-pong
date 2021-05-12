@@ -58,7 +58,6 @@ We did not see a significant change in how fast the DQN trained with each autoen
 
 In terms of wall time, the results were as expected. The DQNs using encoders with larger latent spaces in general took more time to train. This is due to the larger file size leading to more cache misses and the need to run a larger network for every game screen input. The difference between the slowest network and the fastest network in terms of wall clock time for 1M steps was about 5 hours (8:55 vs 13:59). The training time for each encoder was 33 minutes and took 25K steps. The total amount of time needed was about 9.5 hours in comparison to 21 hours for the fastest baseline.
 
-### put a table here showing total time comparisons
 Similarly, we performed an ablation study to see how much of the game state we really needed to train a good DQN policy. We chose not to reconstruct the other player to see if our agent could still win the game. We thought that this would lead the agent to just return much better shots rather than trying to specifically aim away from the other agent. We again used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (16 is teal, 32 is peach, 48 is green, and 64 is brown). The difference between these autoencoders and the previous set is that we did not wish to generate segmentations for the other agent using these. The actual file size of each compression is 
 
 ![](assets/maskval.png)
