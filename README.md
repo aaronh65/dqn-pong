@@ -33,10 +33,10 @@ Our plan is to use the encoder-decoder setup mentioned previously where we ask t
 
 ### Technical Approach
 #### Training the autoencoder
-The training data for the autoencoder is collected by deploying a random agent in Pong, and recording images over a number of episodes. We found that recording 20 episodes worth of data (<10K frames) was sufficient. Formally, our autoencoder $\phi$ trains an encoder $\phi_e$ and decoder $\phi_d$ such that given an image $s$ and ground truth semantic segmentation masks $m$, we minimize $||\phi_d(\phi_e(s)) - m||$. Given image $s$, $m$ can be computed on the fly using color masking - in Pong, the player is green, the opponent is brown, and the ball is white. 
+The training data for the autoencoder is collected by deploying a random agent in Pong, and recording images over a number of episodes. We found that recording 20 episodes worth of data (<10K frames) was sufficient. Formally, our autoencoder $\phi$ trains an encoder $\phi_e$ and decoder $\phi_d$ such that given an image $s$ and ground truth semantic segmentation masks $m$, we minimize $||\phi_d(\phi_e(s)) - m||$. Given image $s$, $m$ can be computed on the fly using color masking - in Pong, the ball is white while the player and opponent are different colors.
 
 ![Pong autoencoder](assets/autoencoder_im1.png)
-- examples of segmentation gts
+*In each row, input image on left, ground truth semantic mask middle, autoencoder reconstruction right*
 
 #### Training the DQN
 Our baseline is the classic DQN approach which we were able to find a good open-source implementation of [here](https://github.com/Rochan-A/dqn-pong). Deep Q learning is an off-policy RL approach that works by deploying a behavior policy in an environment/task (formulated as an MDP), and filling a *replay buffer* with experience tuples containing (state *s*,action *a*, reward *r*, next state *ns*). The DQN network $Q\_theta$ is trained to optimize **INSERT TD LOSS OBJECTIVE**. During training, the algorithm iterates between (1) rolling out a behavior policy and storing experience tuples in the replay buffer and (2) sampling from the replay buffer and training Q_theta to optimize **TD LOSS**. At test time, we can recover a simple policy $\pi(s) = argmax_aQ(s,a)$. A more detailed explanation of the DQN approach can be found in the [original paper](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf). 
