@@ -1,9 +1,5 @@
 ### Introduction
-End-to-end learning algorithms for tasks like robotic manipulation and autonomous driving often consume raw pixels (in the case of cameras) as a representation of the current environment state. These systems hope to learn a nonlinear mapping from images to control in a way that optimizes some sort of objective. However, it is often hard to successfully train such a visuomotor model to convergence in a way that yields good performance. This is especially obvious in reinforcement learning research, with classic approaches like DQN requiring hundreds of millions of image frames to converge (sometimes unstably). One common hypothesis is that images are a very high-dimensional input, and it may be difficult to efficiently learn a mapping from state to control. For our project, we investigate different methods of visual representation learning for reinforcement learning in the ATARI Pong game. We incorporate auxiliary tasks when training the encoder and decoder to learn visual representations that better inform reinforcement learning policies in these domains. We are able to empirically show that our approach trains DQN policies that are more sample efficient and stable than the baseline DQN approaches. 
-
-- talk about our key result
-- bring up RL earlier and tie it to images
-
+End-to-end learning algorithms for tasks like robotic manipulation and autonomous driving often consume raw pixels (in the case of cameras) as a representation of the current environment state. These systems hope to learn a nonlinear mapping from images to control policy in a way that optimizes some sort of objective. However, it is often hard to successfully train such a visuomotor model to convergence in a way that yields good performance. This is especially obvious in reinforcement learning research, with classic approaches like DQN requiring hundreds of millions of image frames to converge (sometimes unstably). One common hypothesis is that images are a very high-dimensional input, and it may be difficult to efficiently learn a mapping from state to control. For our project, we investigate different methods of visual representation learning for reinforcement learning in the ATARI Pong game. We incorporate auxiliary tasks specific to the game when training an autoencoder to learn visual representations that better inform reinforcement learning policies in these domains. We are able to empirically show that our approach trains DQN policies that are more sample efficient and stable than the baseline DQN approaches. 
 
 ### Related Work
 Previous work has used multi-task setups to augment the performance of learned planners (ChauffeurNet, Uber NMP). ChauffeurNet is an imitation learning approach that seeks to push the boundaries of completely offline (non-interactive) imitation learning. A major component of their approach is using trajectory perturbations and random object removal to synthesize new and interesting scenarios from recorded driving data. The model is trained to overcome these these synthesized, possibly dangerous scenarios by using a multi-task loss that penalizes bad behavior (e.g. collisions, going off-road). Similarly, the Neural Motion Planner approach uses inverse RL to predict a spatiotemporal cost volume that is used to grade proposed trajectories, with the minimum cost trajectory chosen as the plan. The cost volume is trained alongside auxiliary perception tasks that are claimed to make the learned cost volumes more interpretable.
@@ -15,21 +11,11 @@ Our approach similarly uses auxiliary perception tasks for representation learni
 
 
 ### Approach
-The classic ATARI games are a simple testbed for training and evaluating autonomous agents and are popular because they naturally provide interesting, dynamic environments (often with an explicit reward structure). We worked with the classic Pong game. The OpenAI Pong implementation has three main classes of actors: the player agent, the other agent, and the ball. The goal of the game is to get the ball past the other agent. 
+The classic ATARI games are a simple testbed for training and evaluating autonomous agents and are popular because they naturally provide interesting, dynamic environments (often with an explicit reward structure). We worked with the classic Pong game. The OpenAI Pong implementation has three main classes of actors: the player agent, the other agent, and the ball. The goal of the game is to get the ball past the other agent. For each ball that our player agent gets past the other agent, we receive 1 reward. For each ball that the other agent gets past our player agent, we receive -1 reward. The best score, or when the game ends, is when any player receives 21 points.
 
-- RL reward structure
+Intuitively, knowing the positions of each type of object on a game screen is important to being able to play the game well. There are other portions of a game, such as the background, which do not provide useful information towards the objective of the game. Finding the positions of each object can be formulated as a segmentation task. We can do this by training the autoencoder to output segmentations of the game screen for each class object. Simply running the autoencoder on the game screen and outputting the segmentations, however, does not reduce the dimensionality of the input. The key reason for using an autoencoder is because it is forced to learn a compressed latent space representation of the input that can be decoded to perform the auxiliary task. We hypothesize that this encoded latent space must therefore maintain useful information about task-relevant objects in the game in a more compressed representation than the original game screen and can be used to train a reinforcement learning policy more efficiently. This idea can be extended to different auxiliary tasks depending on the testing environment.
 
-Our key idea is to use an autoencoder to compress the representation of the state from a high-dimensional image input (the game screen) to a smaller latent space. 
-
-- explain how using the prediction task will force the encoder to learn something useful intuition
-- "positional knowledge"
-- you need to know where other things are to play this game
-- there are non-useful things
-- if you know what things are important you can force the encoder to ignore the useless stuff
-
-Each channel of the decoder predicts the pixel locations of a particular class of object. This is trained with ground truth segmentations and forces the encoded latent space to maintain information about task-relevant objects in the game. The specifics of the auxiliary tasks will likely differ depending on the testing environment. After training the encoder, we can try to train reinforcement/imitation learning approaches using encoded images instead of raw images, and compare performance on the appropriate benchmarks. 
-
-Our plan is to use the encoder-decoder setup mentioned previously where we ask the decoder to reconstruct the locations of each class of agent as the auxiliary task. For example, we could produce a segmentation mask of the bullets in the scene, and weight this reconstruction loss very high (since bullets are especially relevant to staying alive). There's no straightforward API for retrieving semantically segmented masks of the game window, but we can use basic heuristics to retrieve the masks (e.g. space invaders are color-coded by class). 
+For the Pong environment, each channel of the decoder predicts the pixel locations of a particular class of object. For example, we produce a segmentation mask of the ball in the scene, and weight this reconstruction loss very high (since the position of the ball is directly tied to the reward). There's no straightforward API for retrieving semantically segmented masks of the game window, but we can use basic heuristics to retrieve the masks (e.g. the pixels are color-coded by class). 
 
 ### Technical Approach
 #### Training the autoencoder
@@ -48,10 +34,35 @@ Our baseline is the classic DQN approach which we were able to find a good open-
 - try ablation with masking out less things
 
 ### Results
+We tested 2 baselines - the solid green was the original simple DQN implementation as described in the original paper and the dashed green  was a DQN using a ResNet feature encoder. Both show good asymptotic performance, though there is slightly more consistency with the simple baseline. However, even though the simple baseline takes longer in terms of steps to converge, it reached convergence in 21 hours of wallclock time while the ResNet baseline reached convergence in 2 days of runtime. The simple baseline reached the best reward in about 600K steps.
 
-- how long did it take to get to 21?
-- how long did it take to be stable?
-  - in wallclock time and steps
-- how much space do the encodings take
-- ADD IN THE ENCODER TRAINING TIME / STEPS
-- what is the best approach tldr
+![baseline val results](assets/baselineval.png)
+
+We then used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (16 is pale green, 32 is purple, 48 is yellow, and 64 is ice blue). The actual file size of each compression is 
+
+![](assets/nomaskval.png)
+
+We did not see a significant change in how fast the DQN trained with each autoencoder reached a top reward of 21. Each run reached the top reward in about 400K steps. Each autoencoder maintained good asymptotic performance for the next 500K steps. This is encouraging for our idea because it shows that the representation actually needed to train these policies well is quite small.
+
+![](assets/nomasktime.png)
+In terms of wall time, the results were as expected. The DQNs using encoders with larger latent spaces in general took more time to train. This is due to the larger file size leading to more cache misses and the need to run a larger network for every game screen input. The difference between the slowest network and the fastest network in terms of wall clock time for 1M steps was about 5 hours (8:55 vs 13:59). The training time for each encoder was 33 minutes and took 25K steps. The total amount of time needed was about 9.5 hours in comparison to 21 hours for the fastest baseline.
+
+### put a table here showing total time comparisons
+Similarly, we performed an ablation study to see how much of the game state we really needed to train a good DQN policy. We chose not to reconstruct the other player to see if our agent could still win the game. We thought that this would lead the agent to just return much better shots rather than trying to specifically aim away from the other agent. We again used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (16 is teal, 32 is peach, 48 is green, and 64 is brown). The difference between these autoencoders and the previous set is that we did not wish to generate segmentations for the other agent using these. The actual file size of each compression is 
+
+![](assets/maskval.png)
+
+We again did not see a significant change in how fast the DQN trained with each autoencoder reached a top reward of 21, even though it seems like the smallest latent space DQN did reach high rewards much faster. Each autoencoder again maintained good asymptotic performance for the next 500K steps. Overall, all methods reached the top reward in about 350K steps.
+
+![](assets/masktime.png)
+In terms of wall time, the results were not as spread out as previously. These policies all took a bit longer to train. This could be explained by the fact that the games take longer once the policies get better.  Since we see the teal policy get better much earlier, it ends up taking a similar amount of wallclock time. The DQNs using encoders with larger latent spaces in general took more time to train again. The difference between the slowest network and the fastest network in terms of wall clock time for 1M steps was about 3 hours (11:23 vs 14:30). The training time for each encoder was 32 minutes and took 25K steps. The total amount of time needed was about 12 hours in comparison to 21 hours for the fastest baseline. These results are not as good as the previous set of autoencoders. This shows that the position of the other agent is probably important to the game.
+
+**Results Summary**
+|   |                                               | autoencoder training time | autoencoder training steps | DQN training time to convergence | DQN training steps | total time | total steps |
+|---|-----------------------------------------------|---------------------------|:--------------------------:|----------------------------------|:------------------:|------------|-------------|
+|   | simple baseline                               |             -             |              -             |               21:00              |         1M         |    21:00   | 1M          |
+|   | our approach (best)                           |            :33            |             25K            |               8:55               |        400K        |    **9:28**    | 425K        |
+|   | our approach (no other player reconstruction) |            :32            |             25K            |               11:23              |        375K        |    11:55   | **400K**        |
+
+
+We show that this method of using a compressed latent space taken from an autoencoder trained to perform game-specific tasks to train a DQN policy improves convergence time in steps and wallclock time. In the approach where we reconstruct all important agents using the autoencoder, it  significantly reduces the total time needed to train by more than 230% in comparison to the baseline. In the approach where we do not reconstruct the other player, the total training steps to convergence are reduced by 250%.
