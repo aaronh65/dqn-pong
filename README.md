@@ -1,15 +1,18 @@
 ### Introduction
-End-to-end learning algorithms for tasks like robotic manipulation and autonomous driving often consume raw pixels (in the case of cameras) as a representation of the current environment state. These systems hope to learn a nonlinear mapping from images to control in a way that optimizes some sort of objective. However, it is often hard to successfully train such a visuomotor model to convergence in a way that yields good performance, especially for complex tasks like autonomous navigation. One common hypothesis is that images are a very high-dimensional input, and it may be difficult to efficiently learn a mapping from state to control. For our project, we investigate different methods of visual representation learning for planning and action in video games. We incorporate auxiliary tasks when training the encoder and decoder to learn visual representations that better inform reinforcement learning policies in these domains.
+End-to-end learning algorithms for tasks like robotic manipulation and autonomous driving often consume raw pixels (in the case of cameras) as a representation of the current environment state. These systems hope to learn a nonlinear mapping from images to control in a way that optimizes some sort of objective. However, it is often hard to successfully train such a visuomotor model to convergence in a way that yields good performance. This is especially obvious in reinforcement learning research, with classic approaches like DQN requiring hundreds of millions of image frames to converge (sometimes unstably). One common hypothesis is that images are a very high-dimensional input, and it may be difficult to efficiently learn a mapping from state to control. For our project, we investigate different methods of visual representation learning for reinforcement learning in the ATARI Pong game. We incorporate auxiliary tasks when training the encoder and decoder to learn visual representations that better inform reinforcement learning policies in these domains. We are able to empirically show that our approach trains DQN policies that are more sample efficient and stable than the baseline DQN approaches. 
 
 - talk about our key result
 - bring up RL earlier and tie it to images
 
 
 ### Related Work
-Previous work has used multi-task setups to augment the performance of learned planners (ChauffeurNet, Uber NMP). One recent work has specifically tried to learn "implicit affordances" - a compact learned representation - for reinforcement learning in autonomous driving. 
+Previous work has used multi-task setups to augment the performance of learned planners (ChauffeurNet, Uber NMP). ChauffeurNet is an imitation learning approach that seeks to push the boundaries of completely offline (non-interactive) imitation learning. A major component of their approach is using trajectory perturbations and random object removal to synthesize new and interesting scenarios from recorded driving data. The model is trained to overcome these these synthesized, possibly dangerous scenarios by using a multi-task loss that penalizes bad behavior (e.g. collisions, going off-road). Similarly, the Neural Motion Planner approach uses inverse RL to predict a spatiotemporal cost volume that is used to grade proposed trajectories, with the minimum cost trajectory chosen as the plan. The cost volume is trained alongside auxiliary perception tasks that are claimed to make the learned cost volumes more interpretable.
+
+Our approach similarly uses auxiliary perception tasks for representation learning in reinforcement learning. Our approach is closely related to a recent work called MaRLn that uses end-to-end reinforcement learning for driving in simulation. MaRLn hypothesizes that images are not good representations for RL state because they are too large and contain a lot of irrelevant information. Their idea is to replace the image state with a smaller compressed representation with the key novelty here being how that representation is produced. The authors adopt an autoencoder approach and use a multi-task loss which trains the network to encode the image into a small latent space, and then decode it to perform various tasks like semantic segmentation and some regression tasks. In theory, this latent space should contain information that is relevant to the task at hand while reducing the memory footprint of the replay buffer. 
 
 - Note - we want to focus on how awful it is to have high dimensional state
 - Need to talk about DQN original results and the drawbacks
+
 
 ### Approach
 The classic ATARI games are a simple testbed for training and evaluating autonomous agents and are popular because they naturally provide interesting, dynamic environments (often with an explicit reward structure). We worked with the classic Pong game. The OpenAI Pong implementation has three main classes of actors: the player agent, the other agent, and the ball. The goal of the game is to get the ball past the other agent. 
@@ -28,7 +31,14 @@ Each channel of the decoder predicts the pixel locations of a particular class o
 
 Our plan is to use the encoder-decoder setup mentioned previously where we ask the decoder to reconstruct the locations of each class of agent as the auxiliary task. For example, we could produce a segmentation mask of the bullets in the scene, and weight this reconstruction loss very high (since bullets are especially relevant to staying alive). There's no straightforward API for retrieving semantically segmented masks of the game window, but we can use basic heuristics to retrieve the masks (e.g. space invaders are color-coded by class). 
 
-#### Technical Approach
+### Technical Approach
+#### Training the autoencoder
+The training data for the autoencoder is collected by deploying a random agent in Pong, and recording images over a number of episodes. We found that recording 20 episodes worth of data (<10K frames) was sufficient. Formally, our autoencoder $\phi$ trains an encoder $\phi_e$ and decoder $\phi_d$ such that given an image $s$ and ground truth semantic segmentation masks $m$, we minimize $||\phi_d(\phi_e(s)) - m||$. Given image $s$, $m$ can be computed on the fly using color masking - in Pong, the player is green, the opponent is brown, and the ball is white. 
+
+INSERT PICTURES
+
+#### Training the DQN
+Our baseline is the classic DQN approach which we were able to find a good open-source implementation of here [INSERT LINK](link.to.site). DQN is an off-policy RL approach that samples experience tuples containing (s,a,r,ns). A more detailed explanation of the DQN approach can be found in the original paper [INSERT LINK](link.to.dqn). 
 
 - algorithm
   - DQN - target network
