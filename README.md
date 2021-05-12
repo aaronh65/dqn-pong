@@ -45,6 +45,7 @@ We then used our approach to train a set of 4 autoencoders where each autoencode
 We did not see a significant change in how fast the DQN trained with each autoencoder reached a top reward of 21. Each run reached the top reward in about 400K steps. Each autoencoder maintained good asymptotic performance for the next 500K steps. This is encouraging for our idea because it shows that the representation actually needed to train these policies well is quite small.
 
 ![](assets/nomasktime.png)
+
 In terms of wall time, the results were as expected. The DQNs using encoders with larger latent spaces in general took more time to train. This is due to the larger file size leading to more cache misses and the need to run a larger network for every game screen input. The difference between the slowest network and the fastest network in terms of wall clock time for 1M steps was about 5 hours (8:55 vs 13:59). The training time for each encoder was 33 minutes and took 25K steps. The total amount of time needed was about 9.5 hours in comparison to 21 hours for the fastest baseline.
 
 ### put a table here showing total time comparisons
@@ -55,14 +56,8 @@ Similarly, we performed an ablation study to see how much of the game state we r
 We again did not see a significant change in how fast the DQN trained with each autoencoder reached a top reward of 21, even though it seems like the smallest latent space DQN did reach high rewards much faster. Each autoencoder again maintained good asymptotic performance for the next 500K steps. Overall, all methods reached the top reward in about 350K steps.
 
 ![](assets/masktime.png)
+
 In terms of wall time, the results were not as spread out as previously. These policies all took a bit longer to train. This could be explained by the fact that the games take longer once the policies get better.  Since we see the teal policy get better much earlier, it ends up taking a similar amount of wallclock time. The DQNs using encoders with larger latent spaces in general took more time to train again. The difference between the slowest network and the fastest network in terms of wall clock time for 1M steps was about 3 hours (11:23 vs 14:30). The training time for each encoder was 32 minutes and took 25K steps. The total amount of time needed was about 12 hours in comparison to 21 hours for the fastest baseline. These results are not as good as the previous set of autoencoders. This shows that the position of the other agent is probably important to the game.
 
-**Results Summary**
-|   |                                               | autoencoder training time | autoencoder training steps | DQN training time to convergence | DQN training steps | total time | total steps |
-|---|-----------------------------------------------|---------------------------|:--------------------------:|----------------------------------|:------------------:|------------|-------------|
-|   | simple baseline                               |             -             |              -             |               21:00              |         1M         |    21:00   | 1M          |
-|   | our approach (best)                           |            :33            |             25K            |               8:55               |        400K        |    **9:28**    | 425K        |
-|   | our approach (no other player reconstruction) |            :32            |             25K            |               11:23              |        375K        |    11:55   | **400K**        |
-
-
+![](assets/results%20table.png)
 We show that this method of using a compressed latent space taken from an autoencoder trained to perform game-specific tasks to train a DQN policy improves convergence time in steps and wallclock time. In the approach where we reconstruct all important agents using the autoencoder, it  significantly reduces the total time needed to train by more than 230% in comparison to the baseline. In the approach where we do not reconstruct the other player, the total training steps to convergence are reduced by 250%.
