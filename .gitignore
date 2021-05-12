@@ -1,3 +1,4 @@
+*target*
 setup.bash
 video/*
 */__pycache__/*.pyc
