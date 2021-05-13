@@ -1,5 +1,3 @@
-[![Project Overview](https://res.cloudinary.com/marcomontalbano/image/upload/v1620927917/video_to_markdown/images/youtube--yKehSUzMMyI-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/yKehSUzMMyI "Project Overview")
-
 ### Introduction
 End-to-end learning algorithms for tasks like robotic manipulation and autonomous driving often consume raw pixels (in the case of cameras) as a representation of the current environment state. These systems hope to learn a nonlinear mapping from images to control policy in a way that optimizes some sort of objective. However, it is often hard to successfully train such a visuomotor model to convergence in a way that yields good performance. This is especially obvious in reinforcement learning research, with classic approaches like DQN requiring hundreds of millions of image frames to converge (sometimes unstably). One common hypothesis is that images are a very high-dimensional input, and it may be difficult to efficiently learn a mapping from state to control. For our project, we investigate different methods of visual representation learning for reinforcement learning in the ATARI Pong game. We incorporate auxiliary tasks specific to the game when training an autoencoder to learn visual representations that better inform reinforcement learning policies in these domains. We are able to empirically show that our approach trains DQN policies that are more sample efficient and stable than the baseline DQN approaches. 
 
@@ -61,6 +59,10 @@ In terms of wall time, the results were not as spread out as previously. These p
 We show that this method of using a compressed latent space taken from an autoencoder trained to perform game-specific tasks to train a DQN policy improves convergence time in steps and wallclock time. In the approach where we reconstruct all important agents using the autoencoder, it  significantly reduces the total time needed to train by more than 230% in comparison to the baseline. In the approach where we do not reconstruct the other player, the total training steps to convergence are reduced by 250%.
 
 [![episode 2](https://res.cloudinary.com/marcomontalbano/image/upload/v1620928300/video_to_markdown/images/youtube--XVu3Al7qObg-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/XVu3Al7qObg "episode 2")
+*evaluation result after 20 training epochs*
+
 [![episode 9](https://res.cloudinary.com/marcomontalbano/image/upload/v1620928342/video_to_markdown/images/youtube--e9GgKwpY05M-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/e9GgKwpY05M "episode 9")
-https://youtu.be/twugFPFXpLQ
+*evaluation result after 90 training epochs*
+
 [![episode 25](https://res.cloudinary.com/marcomontalbano/image/upload/v1620928363/video_to_markdown/images/youtube--twugFPFXpLQ-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/twugFPFXpLQ "episode 25")
+*evaluation result after 250 training epochs*
