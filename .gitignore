@@ -1,7 +1,3 @@
-*target*
-setup.bash
-video/*
-*/__pycache__/*.pyc
-*.swp
-checkpoints
-wandb
+_site
+.sass-cache
+.jekyll-metadata
