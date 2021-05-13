@@ -29,7 +29,7 @@ import cv2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-DEBUG = False
+DEBUG = True
 
 # hyperparameters
 lr = 1e-4
@@ -71,8 +71,8 @@ encoder_ids = [
 
 ID = 1
 
-encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
-#encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+#encoder_path = f"/home/aaronhua/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
+encoder_path = f"/home/aaron/workspace/vlr/dqn-pong/autoencoder/checkpoints/{encoder_ids[ID]}/epoch=19.ckpt"
 auto_encoder = AutoEncoder.load_from_checkpoint(encoder_path).to(device)
 encoder = auto_encoder.encoder
 decoder = auto_encoder.decoder
@@ -86,17 +86,17 @@ Transition = namedtuple('Transition',
 memory = ReplayMemory(MEMORY_SIZE)
 
 # create networks
-#policy_net = DQNBase(n_actions=4).to(device)
-#target_net = DQNBase(n_actions=4).to(device)
-#target_net.load_state_dict(policy_net.state_dict())
+policy_net = DQNBase(n_actions=4).to(device)
+target_net = DQNBase(n_actions=4).to(device)
+target_net.load_state_dict(policy_net.state_dict())
 
 #policy_net = DQNEncodedFeatures(512, n_actions=4).to(device)
 #target_net = DQNEncodedFeatures(512, n_actions=4).to(device)
 #target_net.load_state_dict(policy_net.state_dict())
 
-policy_net = DQNEncodedLight(auto_encoder.hparams.k*16, n_actions=4).to(device)
-target_net = DQNEncodedLight(auto_encoder.hparams.k*16, n_actions=4).to(device)
-target_net.load_state_dict(policy_net.state_dict())
+#policy_net = DQNEncodedLight(auto_encoder.hparams.k*16, n_actions=4).to(device)
+#target_net = DQNEncodedLight(auto_encoder.hparams.k*16, n_actions=4).to(device)
+#target_net.load_state_dict(policy_net.state_dict())
 with open(str(save_dir / 'policy_config.txt'), 'w') as f:
     f.write(str(policy_net))
 with open(str(save_dir / 'encoder_config.txt'), 'w') as f:

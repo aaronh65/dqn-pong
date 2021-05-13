@@ -11,9 +11,9 @@ from deepq.learn import *
 
 ENV_NAME = "PongNoFrameskip-v4"
 NUM_STEPS = int(1e6)
-RENDER = False
-ENCODER = True
-USE_WANDB = True
+RENDER = True
+ENCODER = False
+USE_WANDB = False
 
 if __name__ == '__main__':
 
