@@ -44,11 +44,11 @@ Our proposed approach applies a simple modification to the DQN baseline. We use 
 - try ablation with masking out less things
 
 ### Results
-We tested 2 baselines - the grey was the original simple DQN implementation as described in the original paper and the brown  was a DQN using a ResNet feature encoder. Both show good asymptotic performance, though there is slightly more consistency with the simple baseline. However, even though the simple baseline takes longer in terms of steps to converge, it reached convergence in 21 hours of wallclock time while the ResNet baseline reached convergence in 2 days of runtime. The simple baseline reached the best reward in about 600K steps.
+The baseline we used was the simple DQN implementation as described in the  paper and the original brown  was a DQN using a ResNet feature encoder. It reached convergence in **** hours of wallclock time. The simple baseline reached the best reward in about 600K steps.
 
 ![baseline val results](assets/baselineval.png)
 
-We then used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (16 is green, 32 is purple, 48 is yellow, and 64 is blue). The actual file size of each compression is 
+We then used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (k=1 is green, k=2 is purple, k=3 is yellow, and k=4 is blue). The actual file size of each compression is (7.7 x k) kB.
 
 ![](assets/nomaskval.png)
 
