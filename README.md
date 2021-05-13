@@ -44,11 +44,11 @@ Our proposed approach applies a simple modification to the DQN baseline. We use 
 - try ablation with masking out less things
 
 ### Results
-We tested 2 baselines - the solid green was the original simple DQN implementation as described in the original paper and the dashed green  was a DQN using a ResNet feature encoder. Both show good asymptotic performance, though there is slightly more consistency with the simple baseline. However, even though the simple baseline takes longer in terms of steps to converge, it reached convergence in 14 hours of wallclock time while the ResNet baseline reached convergence in 1.5 days of runtime. The simple baseline reached the best reward in about 600K steps.
+The baseline we used was the simple DQN implementation as described in the  paper and the original brown  was a DQN using a ResNet feature encoder. It reached convergence in **** hours of wallclock time. The simple baseline reached the best reward in about 600K steps.
 
 ![baseline val results](assets/baselineval.png)
 
-We then used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (16 is pale green, 32 is purple, 48 is yellow, and 64 is ice blue). The actual file size of each compression is 
+We then used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (k=1 is green, k=2 is purple, k=3 is yellow, and k=4 is blue). The actual file size of each compression is (7.7 x k) kB.
 
 ![](assets/nomaskval.png)
 
@@ -58,7 +58,7 @@ We did not see a significant change in how fast the DQN trained with each autoen
 
 In terms of wall time, the results were as expected. The DQNs using encoders with larger latent spaces in general took more time to train. This is due to the larger file size leading to more cache misses and the need to run a larger network for every game screen input. The difference between the slowest network and the fastest network in terms of wall clock time for 1M steps was about 5 hours (8:55 vs 13:59). The training time for each encoder was 33 minutes and took 25K steps. The total amount of time needed was about 9.5 hours in comparison to 14 hours for the fastest baseline.
 
-Similarly, we performed an ablation study to see how much of the game state we really needed to train a good DQN policy. We chose not to reconstruct the other player to see if our agent could still win the game. We thought that this would lead the agent to just return much better shots rather than trying to specifically aim away from the other agent. We again used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (16 is teal, 32 is peach, 48 is green, and 64 is brown). The difference between these autoencoders and the previous set is that we did not wish to generate segmentations for the other agent using these. The actual file size of each compression is 
+Similarly, we performed an ablation study to see how much of the game state we really needed to train a good DQN policy. We chose not to reconstruct the other player to see if our agent could still win the game. We thought that this would lead the agent to just return much better shots rather than trying to specifically aim away from the other agent. We again used our approach to train a set of 4 autoencoders where each autoencoder had a different latent space size (16 is blue, 32 is orange, 48 is green, and 64 is purple). The difference between these autoencoders and the previous set is that we did not wish to generate segmentations for the other agent using these. The actual file size of each compression is 
 
 ![](assets/maskval.png)
 
