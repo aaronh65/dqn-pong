@@ -56,13 +56,16 @@ We again did not see a significant change in how many steps the DQN trained with
 In terms of wall time, the results were not as spread out as previously. These policies all took a bit longer to train. This could be explained by the fact that the games take longer in the middle of the game where there are more rallies and the players are equally matched.  The rewards all hover around some values before quickly jumping up, rather than increasing slowly. The DQNs using encoders with larger latent spaces in general took more time to train again. The difference between the slowest network and the fastest network in terms of wall clock time for 1M steps was about 3 hours (11:23 vs 14:30). The training time for each encoder was 32 minutes and took 25K steps. The total amount of time needed was about 12 hours in comparison to 15 hours for the fastest baseline. These results are not as good as the previous set of autoencoders. This shows that the position of the other agent is probably important to the game.
 
 ![](assets/results%20table.png)
-We show that this method of using a compressed latent space taken from an autoencoder trained to perform game-specific tasks to train a DQN policy improves convergence time in steps and wallclock time. In the approach where we reconstruct all important agents using the autoencoder, it  significantly reduces the total time needed to train by more than 230% in comparison to the baseline. In the approach where we do not reconstruct the other player, the total training steps to convergence are reduced by 250%.
+We show that this method of using a compressed latent space taken from an autoencoder trained to perform game-specific tasks to train a DQN policy improves convergence time in steps and wallclock time. In the approach where we reconstruct all important agents using the autoencoder, it  significantly reduces the total time needed to train by more than 230% in comparison to the baseline. In the approach where we do not reconstruct the other player, the total training steps to convergence are reduced by 250%. The following three videos show evaluation results during the beginning, middle, and end of training our best model (icy-dust-103).
 
 [![episode 2](https://res.cloudinary.com/marcomontalbano/image/upload/v1620928300/video_to_markdown/images/youtube--XVu3Al7qObg-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/XVu3Al7qObg "episode 2")
+
 *evaluation result after 20 training epochs*
 
 [![episode 9](https://res.cloudinary.com/marcomontalbano/image/upload/v1620928342/video_to_markdown/images/youtube--e9GgKwpY05M-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/e9GgKwpY05M "episode 9")
+
 *evaluation result after 90 training epochs*
 
 [![episode 25](https://res.cloudinary.com/marcomontalbano/image/upload/v1620928363/video_to_markdown/images/youtube--twugFPFXpLQ-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/twugFPFXpLQ "episode 25")
+
 *evaluation result after 250 training epochs*
