@@ -61,3 +61,7 @@ In terms of wall time, the results were not as spread out as previously. These p
 
 ![](assets/results%20table.png)
 We show that this method of using a compressed latent space taken from an autoencoder trained to perform game-specific tasks to train a DQN policy improves convergence time in steps and wallclock time. In the approach where we reconstruct all important agents using the autoencoder, it  significantly reduces the total time needed to train by more than 230% in comparison to the baseline. In the approach where we do not reconstruct the other player, the total training steps to convergence are reduced by 250%.
+
+![](https://youtu.be/XVu3Al7qObg)
+![](https://youtu.be/e9GgKwpY05M)
+![](https://youtu.be/twugFPFXpLQ)
